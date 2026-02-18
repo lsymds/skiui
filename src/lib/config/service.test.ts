@@ -1,33 +1,22 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { createDefaultProjectConfig } from "./defaults";
-import { resolveConfigPaths, SKIUI_GLOBAL_CONFIG_DIR_ENV } from "./paths";
+import { resolveConfigPaths } from "./paths";
 import { initConfig, loadEffectiveConfig } from "./service";
 import { writeConfigFile } from "./store";
+import { createSkiuiTestEnv, createTempPathManager } from "../testing/test-env";
 
-const tempPaths: string[] = [];
-
-async function createTempPath(prefix: string): Promise<string> {
-  const dirPath = await mkdtemp(join(tmpdir(), prefix));
-  tempPaths.push(dirPath);
-  return dirPath;
-}
+const tempPaths = createTempPathManager();
 
 afterEach(async () => {
-  await Promise.all(
-    tempPaths.splice(0, tempPaths.length).map((path) => rm(path, { recursive: true, force: true }))
-  );
+  await tempPaths.cleanup();
 });
 
 test("initConfig creates project and global files and registers project", async () => {
-  const projectDir = await createTempPath("skiui-project-");
-  const globalDir = await createTempPath("skiui-global-");
-  const env = {
-    ...process.env,
-    [SKIUI_GLOBAL_CONFIG_DIR_ENV]: globalDir
-  };
+  const projectDir = await tempPaths.createTempPath("skiui-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-global-");
+  const env = createSkiuiTestEnv({ globalDir });
 
   await initConfig({
     initGlobal: false,
@@ -75,12 +64,9 @@ test("initConfig creates project and global files and registers project", async 
 });
 
 test("loadEffectiveConfig returns merged config in project context", async () => {
-  const projectDir = await createTempPath("skiui-project-");
-  const globalDir = await createTempPath("skiui-global-");
-  const env = {
-    ...process.env,
-    [SKIUI_GLOBAL_CONFIG_DIR_ENV]: globalDir
-  };
+  const projectDir = await tempPaths.createTempPath("skiui-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-global-");
+  const env = createSkiuiTestEnv({ globalDir });
 
   await initConfig({
     initGlobal: false,

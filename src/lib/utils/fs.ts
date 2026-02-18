@@ -1,6 +1,6 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 
 export async function pathExists(path: string): Promise<boolean> {
   try {
@@ -47,4 +47,26 @@ export async function upsertLines(filePath: string, lines: readonly string[]): P
 
   await ensureDirectory(dirname(filePath));
   await writeFile(filePath, `${existing}${insertion}`, "utf8");
+}
+
+export async function makeSymlink(targetPath: string, linkPath: string): Promise<void> {
+  await ensureDirectory(dirname(linkPath));
+
+  if (await pathExists(linkPath)) {
+    await rm(linkPath, { recursive: true, force: true });
+  }
+
+  const symlinkType = process.platform === "win32" ? "junction" : "dir";
+  const normalizedTarget = process.platform === "win32" ? resolve(targetPath) : targetPath;
+
+  await symlink(normalizedTarget, linkPath, symlinkType);
+}
+
+export async function isSymlink(path: string): Promise<boolean> {
+  try {
+    const stat = await lstat(path);
+    return stat.isSymbolicLink();
+  } catch {
+    return false;
+  }
 }
