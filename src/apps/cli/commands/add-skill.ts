@@ -1,5 +1,5 @@
 import type { Argv } from "yargs";
-import { createNotImplementedHandler } from "./not-implemented";
+import { addSkill } from "../../../lib/config/skills";
 
 type AddSkillArgs = {
   sourceType: "git" | "fs";
@@ -47,6 +47,33 @@ export function registerAddSkillCommand(cli: Argv) {
 
           return true;
         }),
-    createNotImplementedHandler("add-skill")
+    async (args) => {
+      const result = await addSkill({
+        sourceType: args.sourceType,
+        skillName: args.skillName,
+        repositoryUrl: args.repository,
+        sourcePath: args.path,
+        global: args.global ?? false
+      });
+
+      if (!result.repositoryAdded && !result.skillAdded) {
+        console.log(
+          `Skill \`${args.skillName}\` already exists in repository \`${result.repositoryName}\` (${result.scope})`
+        );
+        return;
+      }
+
+      const operations: string[] = [];
+
+      if (result.repositoryAdded) {
+        operations.push(`created repository \`${result.repositoryName}\``);
+      }
+
+      if (result.skillAdded) {
+        operations.push(`added skill \`${args.skillName}\``);
+      }
+
+      console.log(`Updated ${result.scope} config: ${operations.join(" and ")}`);
+    }
   );
 }

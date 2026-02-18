@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { SKIUI_GLOBAL_CONFIG_DIR_ENV } from "../../lib/config/paths";
 
 const CLI_ENTRY = fileURLToPath(new URL("./index.ts", import.meta.url));
+const VERCEL_AGENT_SKILLS_REPOSITORY = "https://github.com/vercel-labs/agent-skills";
 const tempPaths: string[] = [];
 
 async function createTempPath(prefix: string): Promise<string> {
@@ -112,6 +113,69 @@ test("cli config errors when no config is present", async () => {
 
   expect(result.exitCode).toBe(1);
   expect(result.stderr).toContain("No skiui configuration found. Run `skiui init` first.");
+});
+
+test("cli add-skill git updates project configuration", async () => {
+  const projectDir = await createTempPath("skiui-cli-project-");
+  const globalDir = await createTempPath("skiui-cli-global-");
+
+  const env = {
+    ...process.env,
+    [SKIUI_GLOBAL_CONFIG_DIR_ENV]: globalDir
+  };
+
+  const initResult = await runCli(["init"], { cwd: projectDir, env });
+  expect(initResult.exitCode).toBe(0);
+
+  const addSkillResult = await runCli(
+    ["add-skill", "git", "my-skill", "--repository", VERCEL_AGENT_SKILLS_REPOSITORY],
+    { cwd: projectDir, env }
+  );
+
+  expect(addSkillResult.exitCode).toBe(0);
+  expect(addSkillResult.stdout).toContain("Updated project config");
+
+  const configResult = await runCli(["config"], { cwd: projectDir, env });
+  const parsed = JSON.parse(configResult.stdout) as {
+    repositories: Array<{
+      source: { type: string; url?: string };
+      skills: Array<{ name: string; enabled: boolean }>;
+    }>;
+  };
+
+  expect(
+    parsed.repositories.some(
+      (repository) =>
+        repository.source.type === "git" &&
+        repository.source.url === VERCEL_AGENT_SKILLS_REPOSITORY &&
+        repository.skills.some((skill) => skill.name === "my-skill" && skill.enabled)
+    )
+  ).toBe(true);
+});
+
+test("cli list prints enabled skills by scope", async () => {
+  const projectDir = await createTempPath("skiui-cli-project-");
+  const globalDir = await createTempPath("skiui-cli-global-");
+
+  const env = {
+    ...process.env,
+    [SKIUI_GLOBAL_CONFIG_DIR_ENV]: globalDir
+  };
+
+  const initResult = await runCli(["init"], { cwd: projectDir, env });
+  expect(initResult.exitCode).toBe(0);
+
+  const addSkillResult = await runCli(
+    ["add-skill", "git", "my-skill", "--repository", VERCEL_AGENT_SKILLS_REPOSITORY],
+    { cwd: projectDir, env }
+  );
+  expect(addSkillResult.exitCode).toBe(0);
+
+  const listResult = await runCli(["list"], { cwd: projectDir, env });
+  expect(listResult.exitCode).toBe(0);
+  expect(listResult.stdout).toContain("project:");
+  expect(listResult.stdout).toContain("agent-skills (git)");
+  expect(listResult.stdout).toContain("my-skill");
 });
 
 async function runCli(
