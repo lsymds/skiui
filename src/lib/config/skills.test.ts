@@ -105,6 +105,55 @@ test("addSkill falls back to global config outside project context", async () =>
   ).toBe(true);
 });
 
+test("addSkill does not duplicate repository when git URL formatting differs", async () => {
+  const projectDir = await tempPaths.createTempPath("skiui-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-global-");
+  const env = createSkiuiTestEnv({ globalDir });
+
+  await initConfig({
+    initGlobal: false,
+    initProject: true,
+    cwd: projectDir,
+    env
+  });
+
+  const firstResult = await addSkill({
+    sourceType: "git",
+    repositoryUrl: `${VERCEL_AGENT_SKILLS_REPOSITORY}.git`,
+    skillName: "first-skill",
+    global: false,
+    cwd: projectDir,
+    env
+  });
+
+  const secondResult = await addSkill({
+    sourceType: "git",
+    repositoryUrl: `${VERCEL_AGENT_SKILLS_REPOSITORY}/`,
+    skillName: "second-skill",
+    global: false,
+    cwd: projectDir,
+    env
+  });
+
+  expect(firstResult.repositoryAdded).toBe(true);
+  expect(secondResult.repositoryAdded).toBe(false);
+  expect(secondResult.skillAdded).toBe(true);
+
+  const projectConfig = JSON.parse(await readFile(join(projectDir, ".skiui", "skiui.json"), "utf8")) as {
+    repositories: Array<{
+      source: { type: string; url?: string };
+      skills: Array<{ path: string }>;
+    }>;
+  };
+
+  const agentSkillRepos = projectConfig.repositories.filter(
+    (repository) => repository.source.type === "git" && repository.source.url === VERCEL_AGENT_SKILLS_REPOSITORY
+  );
+
+  expect(agentSkillRepos).toHaveLength(1);
+  expect(agentSkillRepos[0]?.skills.map((skill) => skill.path).sort()).toEqual(["first-skill", "second-skill"]);
+});
+
 test("listEnabledSkills includes scope for enabled entries", async () => {
   const projectDir = await tempPaths.createTempPath("skiui-project-");
   const globalDir = await tempPaths.createTempPath("skiui-global-");

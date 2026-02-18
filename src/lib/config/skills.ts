@@ -1,4 +1,4 @@
-import { basename } from "node:path";
+import { basename, normalize } from "node:path";
 import type { ConfigScope } from "../projects/types";
 import { CliError } from "../utils/errors";
 import { resolveConfigPaths } from "./paths";
@@ -204,7 +204,7 @@ function buildSource(options: AddSkillOptions): RepositoryConfig["source"] {
 
     return {
       type: "git",
-      url: options.repositoryUrl
+      url: normalizeGitUrl(options.repositoryUrl)
     };
   }
 
@@ -214,17 +214,17 @@ function buildSource(options: AddSkillOptions): RepositoryConfig["source"] {
 
   return {
     type: "fs",
-    path: options.sourcePath
+    path: normalizeFsPath(options.sourcePath)
   };
 }
 
 function isSameSource(repository: RepositoryConfig, source: RepositoryConfig["source"]): boolean {
   if (source.type === "git" && repository.source.type === "git") {
-    return repository.source.url === source.url;
+    return normalizeGitUrl(repository.source.url) === normalizeGitUrl(source.url);
   }
 
   if (source.type === "fs" && repository.source.type === "fs") {
-    return repository.source.path === source.path;
+    return normalizeFsPath(repository.source.path) === normalizeFsPath(source.path);
   }
 
   return false;
@@ -246,16 +246,27 @@ function cloneSkill(skill: SkillConfig): SkillConfig {
 
 function inferRepositoryName(source: RepositoryConfig["source"]): string {
   if (source.type === "git") {
-    const sourceText = source.url.trim().replace(/\/+$/, "");
+    const sourceText = normalizeGitUrl(source.url);
     const colonSplit = sourceText.includes(":") ? sourceText.split(":") : [sourceText];
     const finalSegment = colonSplit[colonSplit.length - 1] ?? sourceText;
     const slashSegments = finalSegment.split("/").filter((segment) => segment.length > 0);
     const lastSegment = slashSegments[slashSegments.length - 1] ?? "repository";
-    return sanitizeRepositoryName(lastSegment.replace(/\.git$/i, ""));
+    return sanitizeRepositoryName(lastSegment);
   }
 
-  const sourceText = source.path.trim().replace(/[\\/]+$/, "");
+  const sourceText = normalizeFsPath(source.path);
   return sanitizeRepositoryName(basename(sourceText) || "repository");
+}
+
+function normalizeGitUrl(url: string): string {
+  return url.trim().replace(/\/+$/, "").replace(/\.git$/i, "");
+}
+
+function normalizeFsPath(path: string): string {
+  const trimmed = path.trim();
+  const withoutTrailingSlash = trimmed.replace(/[\\/]+$/, "");
+  const normalized = normalize(withoutTrailingSlash.length > 0 ? withoutTrailingSlash : trimmed);
+  return normalized.replace(/\\/g, "/");
 }
 
 function sanitizeRepositoryName(name: string): string {
