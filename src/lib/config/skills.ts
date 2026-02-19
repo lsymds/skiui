@@ -36,12 +36,43 @@ export type AddSkillOptions = {
   env?: NodeJS.ProcessEnv;
 };
 
+export type AddRepositoryOptions = {
+  repository: string;
+  repositoryName?: string;
+  global: boolean;
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+};
+
+export type AddRepositoryResult = {
+  scope: ConfigScope;
+  configPath: string;
+  repositoryName: string;
+  repositoryAdded: boolean;
+};
+
 export type AddSkillResult = {
   scope: ConfigScope;
   configPath: string;
   repositoryName: string;
   repositoryAdded: boolean;
   skillAdded: boolean;
+};
+
+export type EnableSkillOptions = {
+  repositoryName: string;
+  skillName: string;
+  global: boolean;
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+};
+
+export type EnableSkillResult = {
+  scope: ConfigScope;
+  configPath: string;
+  repositoryName: string;
+  skillAdded: boolean;
+  skillEnabled: boolean;
 };
 
 export type EnabledSkillListEntry = {
@@ -55,6 +86,113 @@ export type EnabledSkillListEntry = {
 export type ListEnabledSkillsResult = {
   entries: EnabledSkillListEntry[];
 };
+
+export async function addRepository(options: AddRepositoryOptions): Promise<AddRepositoryResult> {
+  const layers = await loadLayers(options.cwd, options.env);
+  const target = selectTargetLayer(layers, options.global);
+
+  const source = parseRepositorySource(options.repository);
+  const requestedRepositoryName = options.repositoryName ? validateRepositoryNameInput(options.repositoryName) : undefined;
+  const repositories = target.config.repositories.map(cloneRepository);
+
+  let repository = repositories.find((candidate) => isSameSource(candidate, source));
+  let repositoryAdded = false;
+
+  if (repository) {
+    if (requestedRepositoryName && repository.name !== requestedRepositoryName) {
+      throw new CliError(
+        `Repository source already exists as \`${repository.name}\` in ${target.scope} config; requested name was \`${requestedRepositoryName}\``
+      );
+    }
+
+    return {
+      scope: target.scope,
+      configPath: target.configPath,
+      repositoryName: repository.name,
+      repositoryAdded
+    };
+  }
+
+  if (requestedRepositoryName) {
+    const conflictingRepository = repositories.find((candidate) => candidate.name === requestedRepositoryName);
+    if (conflictingRepository) {
+      throw new CliError(
+        `Repository name \`${requestedRepositoryName}\` already exists in ${target.scope} config with a different source`
+      );
+    }
+  }
+
+  repository = {
+    name: requestedRepositoryName ?? allocateRepositoryName(inferRepositoryName(source), repositories),
+    source,
+    skills: []
+  };
+
+  repositories.push(repository);
+  repositoryAdded = true;
+
+  const updatedConfig: SkiuiConfig = {
+    ...target.config,
+    repositories
+  };
+  await writeConfigFile(target.configPath, updatedConfig);
+
+  return {
+    scope: target.scope,
+    configPath: target.configPath,
+    repositoryName: repository.name,
+    repositoryAdded
+  };
+}
+
+export async function enableSkill(options: EnableSkillOptions): Promise<EnableSkillResult> {
+  const layers = await loadLayers(options.cwd, options.env);
+  const target = selectTargetLayer(layers, options.global);
+
+  const repositoryName = normalizeRepositoryNameInput(options.repositoryName);
+  const skillName = normalizeSkillName(options.skillName);
+
+  const repositories = target.config.repositories.map(cloneRepository);
+  const repository = repositories.find((candidate) => candidate.name === repositoryName);
+
+  if (!repository) {
+    throw new CliError(`Repository \`${repositoryName}\` was not found in ${target.scope} config`);
+  }
+
+  const existingSkill = repository.skills.find((skill) => skill.path === skillName || skill.name === skillName);
+
+  let skillAdded = false;
+  let skillEnabled = false;
+
+  if (!existingSkill) {
+    repository.skills.push({
+      path: skillName,
+      name: skillName,
+      enabled: true
+    });
+    skillAdded = true;
+  } else if (!existingSkill.enabled) {
+    existingSkill.enabled = true;
+    skillEnabled = true;
+  }
+
+  if (skillAdded || skillEnabled) {
+    const updatedConfig: SkiuiConfig = {
+      ...target.config,
+      repositories
+    };
+
+    await writeConfigFile(target.configPath, updatedConfig);
+  }
+
+  return {
+    scope: target.scope,
+    configPath: target.configPath,
+    repositoryName: repository.name,
+    skillAdded,
+    skillEnabled
+  };
+}
 
 export async function addSkill(options: AddSkillOptions): Promise<AddSkillResult> {
   const layers = await loadLayers(options.cwd, options.env);
@@ -216,6 +354,68 @@ function buildSource(options: AddSkillOptions): RepositoryConfig["source"] {
     type: "fs",
     path: normalizeFsPath(options.sourcePath)
   };
+}
+
+function parseRepositorySource(repository: string): RepositoryConfig["source"] {
+  const value = repository.trim();
+
+  if (value.length === 0) {
+    throw new CliError("Repository is required");
+  }
+
+  if (looksLikeGitSource(value)) {
+    return {
+      type: "git",
+      url: normalizeGitUrl(value)
+    };
+  }
+
+  return {
+    type: "fs",
+    path: normalizeFsPath(value)
+  };
+}
+
+function looksLikeGitSource(source: string): boolean {
+  if (/^(https?:\/\/|ssh:\/\/|git:\/\/)/i.test(source)) {
+    return true;
+  }
+
+  return /^[^@\s]+@[^:\s]+:.+$/.test(source);
+}
+
+function normalizeRepositoryNameInput(repositoryName: string): string {
+  const normalized = repositoryName.trim();
+
+  if (normalized.length === 0) {
+    throw new CliError("Repository name is required");
+  }
+
+  return normalized;
+}
+
+function validateRepositoryNameInput(repositoryName: string): string {
+  const normalized = repositoryName.trim();
+
+  if (normalized.length === 0) {
+    throw new CliError("Repository name is required");
+  }
+
+  if (!/^[a-z0-9._-]+$/.test(normalized)) {
+    throw new CliError("Repository name must contain only lowercase letters, numbers, '.', '_' or '-'");
+  }
+
+  return normalized;
+}
+
+function normalizeSkillName(skillName: string): string {
+  const normalized = skillName.trim();
+
+  if (normalized.length === 0) {
+    throw new CliError("Skill name is required");
+  }
+
+  return normalized;
 }
 
 function isSameSource(repository: RepositoryConfig, source: RepositoryConfig["source"]): boolean {

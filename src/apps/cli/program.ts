@@ -1,8 +1,9 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { registerAddSkillCommand } from "./commands/add-skill";
+import { registerAddRepoCommand } from "./commands/add-repo";
 import { registerApplyCommand } from "./commands/apply";
 import { registerConfigCommand } from "./commands/config";
+import { registerEnableSkillCommand } from "./commands/enable-skill";
 import { registerInitCommand } from "./commands/init";
 import { registerListCommand } from "./commands/list";
 
@@ -18,7 +19,8 @@ export function buildCli() {
     .version("0.1.0");
 
   registerInitCommand(cli);
-  registerAddSkillCommand(cli);
+  registerAddRepoCommand(cli);
+  registerEnableSkillCommand(cli);
   registerApplyCommand(cli);
   registerListCommand(cli);
   registerConfigCommand(cli);

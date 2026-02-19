@@ -17,10 +17,10 @@ test("cli list prints enabled skills by scope", async () => {
   const initResult = await runCli(["init"], { cwd: projectDir, env });
   expect(initResult.exitCode).toBe(0);
 
-  const addSkillResult = await runCli(
-    ["add-skill", "git", "my-skill", "--repository", VERCEL_AGENT_SKILLS_REPOSITORY],
-    { cwd: projectDir, env }
-  );
+  const addRepoResult = await runCli(["add-repo", VERCEL_AGENT_SKILLS_REPOSITORY], { cwd: projectDir, env });
+  expect(addRepoResult.exitCode).toBe(0);
+
+  const addSkillResult = await runCli(["enable-skill", "agent-skills", "my-skill"], { cwd: projectDir, env });
   expect(addSkillResult.exitCode).toBe(0);
 
   const listResult = await runCli(["list"], { cwd: projectDir, env });

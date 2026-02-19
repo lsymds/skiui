@@ -67,7 +67,7 @@ test("cli config includes latest persisted repositories", async () => {
   const env = createSkiuiTestEnv({ globalDir });
 
   await runCli(["init"], { cwd: projectDir, env });
-  await runCli(["add-skill", "fs", "my-skill", "--path", ".skiui/local"], { cwd: projectDir, env });
+  await runCli(["enable-skill", "local", "my-skill"], { cwd: projectDir, env });
 
   const configResult = await runCli(["config"], { cwd: projectDir, env });
   const parsed = JSON.parse(configResult.stdout) as {

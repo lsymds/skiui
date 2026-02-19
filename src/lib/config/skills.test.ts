@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { initConfig } from "./service";
-import { addSkill, listEnabledSkills } from "./skills";
+import { addRepository, addSkill, enableSkill, listEnabledSkills } from "./skills";
 import { createSkiuiTestEnv, createTempPathManager } from "../testing/test-env";
 
 const VERCEL_AGENT_SKILLS_REPOSITORY = "https://github.com/vercel-labs/agent-skills";
@@ -203,6 +203,198 @@ test("addSkill does not duplicate repository when fs path formatting differs", a
 
   expect(localRepos).toHaveLength(1);
   expect(localRepos[0]?.skills.map((skill) => skill.path).sort()).toEqual(["first-fs-skill", "second-fs-skill"]);
+});
+
+test("addRepository infers git source and avoids duplicate entries", async () => {
+  const projectDir = await tempPaths.createTempPath("skiui-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-global-");
+  const env = createSkiuiTestEnv({ globalDir });
+
+  await initConfig({
+    initGlobal: false,
+    initProject: true,
+    cwd: projectDir,
+    env
+  });
+
+  const firstResult = await addRepository({
+    repository: `${VERCEL_AGENT_SKILLS_REPOSITORY}.git`,
+    global: false,
+    cwd: projectDir,
+    env
+  });
+
+  const secondResult = await addRepository({
+    repository: `${VERCEL_AGENT_SKILLS_REPOSITORY}/`,
+    global: false,
+    cwd: projectDir,
+    env
+  });
+
+  expect(firstResult.repositoryAdded).toBe(true);
+  expect(secondResult.repositoryAdded).toBe(false);
+  expect(secondResult.repositoryName).toBe("agent-skills");
+
+  const projectConfig = JSON.parse(await readFile(join(projectDir, ".skiui", "skiui.json"), "utf8")) as {
+    repositories: Array<{ source: { type: string; url?: string } }>;
+  };
+
+  const agentSkillRepos = projectConfig.repositories.filter(
+    (repository) => repository.source.type === "git" && repository.source.url === VERCEL_AGENT_SKILLS_REPOSITORY
+  );
+  expect(agentSkillRepos).toHaveLength(1);
+});
+
+test("addRepository allows explicit repository name", async () => {
+  const projectDir = await tempPaths.createTempPath("skiui-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-global-");
+  const env = createSkiuiTestEnv({ globalDir });
+
+  await initConfig({
+    initGlobal: false,
+    initProject: true,
+    cwd: projectDir,
+    env
+  });
+
+  const result = await addRepository({
+    repository: VERCEL_AGENT_SKILLS_REPOSITORY,
+    repositoryName: "shared-skills",
+    global: false,
+    cwd: projectDir,
+    env
+  });
+
+  expect(result.repositoryAdded).toBe(true);
+  expect(result.repositoryName).toBe("shared-skills");
+});
+
+test("addRepository errors when explicit name conflicts with different source", async () => {
+  const projectDir = await tempPaths.createTempPath("skiui-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-global-");
+  const env = createSkiuiTestEnv({ globalDir });
+
+  await initConfig({
+    initGlobal: false,
+    initProject: true,
+    cwd: projectDir,
+    env
+  });
+
+  await addRepository({
+    repository: VERCEL_AGENT_SKILLS_REPOSITORY,
+    repositoryName: "shared-skills",
+    global: false,
+    cwd: projectDir,
+    env
+  });
+
+  await expect(
+    addRepository({
+      repository: ".skiui/another-source",
+      repositoryName: "shared-skills",
+      global: false,
+      cwd: projectDir,
+      env
+    })
+  ).rejects.toThrow("already exists in project config with a different source");
+});
+
+test("addRepository errors when source exists under different name", async () => {
+  const projectDir = await tempPaths.createTempPath("skiui-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-global-");
+  const env = createSkiuiTestEnv({ globalDir });
+
+  await initConfig({
+    initGlobal: false,
+    initProject: true,
+    cwd: projectDir,
+    env
+  });
+
+  await addRepository({
+    repository: VERCEL_AGENT_SKILLS_REPOSITORY,
+    repositoryName: "shared-skills",
+    global: false,
+    cwd: projectDir,
+    env
+  });
+
+  await expect(
+    addRepository({
+      repository: `${VERCEL_AGENT_SKILLS_REPOSITORY}.git`,
+      repositoryName: "other-name",
+      global: false,
+      cwd: projectDir,
+      env
+    })
+  ).rejects.toThrow("source already exists as `shared-skills`");
+});
+
+test("enableSkill enables existing disabled skill in repository", async () => {
+  const projectDir = await tempPaths.createTempPath("skiui-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-global-");
+  const env = createSkiuiTestEnv({ globalDir });
+
+  await initConfig({
+    initGlobal: false,
+    initProject: true,
+    cwd: projectDir,
+    env
+  });
+
+  const addRepositoryResult = await addRepository({
+    repository: VERCEL_AGENT_SKILLS_REPOSITORY,
+    global: false,
+    cwd: projectDir,
+    env
+  });
+
+  const configPath = join(projectDir, ".skiui", "skiui.json");
+  const projectConfig = JSON.parse(await readFile(configPath, "utf8")) as {
+    version: number;
+    cachePath: string;
+    assistants: Record<string, "enabled" | "disabled">;
+    repositories: Array<{
+      name: string;
+      source: { type: "git"; url: string } | { type: "fs"; path: string };
+      skills: Array<{ path: string; name: string; enabled: boolean }>;
+    }>;
+  };
+
+  const repository = projectConfig.repositories.find((entry) => entry.name === addRepositoryResult.repositoryName);
+  if (!repository) {
+    throw new Error("Expected repository to exist");
+  }
+
+  repository.skills.push({
+    path: "my-skill",
+    name: "my-skill",
+    enabled: false
+  });
+
+  await writeFile(configPath, `${JSON.stringify(projectConfig, null, 2)}\n`, "utf8");
+
+  const enableResult = await enableSkill({
+    repositoryName: addRepositoryResult.repositoryName,
+    skillName: "my-skill",
+    global: false,
+    cwd: projectDir,
+    env
+  });
+
+  expect(enableResult.skillAdded).toBe(false);
+  expect(enableResult.skillEnabled).toBe(true);
+
+  const updatedProjectConfig = JSON.parse(await readFile(configPath, "utf8")) as {
+    repositories: Array<{ name: string; skills: Array<{ path: string; enabled: boolean }> }>;
+  };
+  const updatedRepository = updatedProjectConfig.repositories.find(
+    (entry) => entry.name === addRepositoryResult.repositoryName
+  );
+  const skill = updatedRepository?.skills.find((entry) => entry.path === "my-skill");
+
+  expect(skill?.enabled).toBe(true);
 });
 
 test("listEnabledSkills includes scope for enabled entries", async () => {

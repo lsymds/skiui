@@ -26,11 +26,8 @@ test("cli apply links enabled project skills and reports missing skills", async 
     "utf8"
   );
 
-  const addSkillResult = await runCli(["add-skill", "fs", "my-skill", "--path", ".skiui/local"], {
-    cwd: projectDir,
-    env
-  });
-  expect(addSkillResult.exitCode).toBe(0);
+  const enableSkillResult = await runCli(["enable-skill", "local", "my-skill"], { cwd: projectDir, env });
+  expect(enableSkillResult.exitCode).toBe(0);
 
   const projectConfigPath = join(projectDir, ".skiui", "skiui.json");
   const projectConfig = JSON.parse(await readFile(projectConfigPath, "utf8")) as {
@@ -44,10 +41,7 @@ test("cli apply links enabled project skills and reports missing skills", async 
   expect(applyResult.stdout).toContain("Applied project scope");
   expect(await fileExists(join(projectDir, ".claude", "skills", "my-skill"))).toBe(true);
 
-  const addMissingSkillResult = await runCli(["add-skill", "fs", "missing-skill", "--path", ".skiui/local"], {
-    cwd: projectDir,
-    env
-  });
+  const addMissingSkillResult = await runCli(["enable-skill", "local", "missing-skill"], { cwd: projectDir, env });
   expect(addMissingSkillResult.exitCode).toBe(0);
 
   const applyWithMissingResult = await runCli(["apply"], { cwd: projectDir, env });
