@@ -1,9 +1,10 @@
 import { afterEach, expect, test } from "bun:test";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { initConfig } from "./service";
-import { addRepository, addSkill, enableSkill, listEnabledSkills } from "./skills";
-import { createSkiuiTestEnv, createTempPathManager } from "../testing/test-env";
+import { initConfig } from "../service";
+import { addSkill } from "../../testing/add-skill";
+import { addRepository, enableSkill, listEnabledSkills } from "./index";
+import { createSkiuiTestEnv, createTempPathManager } from "../../testing/test-env";
 
 const VERCEL_AGENT_SKILLS_REPOSITORY = "https://github.com/vercel-labs/agent-skills";
 const tempPaths = createTempPathManager();

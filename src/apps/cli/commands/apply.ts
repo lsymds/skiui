@@ -1,5 +1,5 @@
 import type { Argv } from "yargs";
-import { applyConfiguredSkills } from "../../../lib/repos/apply";
+import { applyConfigured } from "../../../lib/apply/index";
 import { CliError } from "../../../lib/utils/errors";
 
 export function registerApplyCommand(cli: Argv) {
@@ -8,7 +8,7 @@ export function registerApplyCommand(cli: Argv) {
     "Fetch repositories and apply skills and rules to assistants",
     () => {},
     async () => {
-      const result = await applyConfiguredSkills();
+      const result = await applyConfigured();
 
       for (const scope of result.scopes) {
         console.log(

@@ -2,14 +2,12 @@ import { resolve } from "node:path";
 import { writeFile } from "node:fs/promises";
 import { createDefaultGlobalConfig, createDefaultProjectConfig } from "./defaults";
 import { mergeConfigLayers } from "./merge";
-import { resolveConfigPaths } from "./paths";
+import { loadConfigLayers } from "./layers";
+import { PROJECT_GITIGNORE_LINES, resolveConfigPaths } from "./paths";
 import { loadConfigFile, writeConfigFile } from "./store";
 import type { SkiuiConfig } from "./types";
-import { getAssistantSkillPaths } from "../assistants/registry";
 import { CliError } from "../utils/errors";
 import { ensureDirectory, pathExists, upsertLines } from "../utils/fs";
-
-const PROJECT_GITIGNORE_LINES = [".skiui/repos", ".skiui/skiui.local.json", ...getAssistantSkillPaths("project")];
 
 export type InitConfigOptions = {
   initGlobal: boolean;
@@ -89,35 +87,29 @@ export async function loadEffectiveConfig(options?: {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
 }): Promise<EffectiveConfigResult> {
-  const cwd = options?.cwd ?? process.cwd();
-  const env = options?.env ?? process.env;
-  const paths = resolveConfigPaths({ cwd, env });
+  const layers = await loadConfigLayers(options?.cwd, options?.env);
 
-  const [globalConfig, projectConfig, localProjectConfig] = await Promise.all([
-    loadConfigFile(paths.globalConfigFile),
-    loadConfigFile(paths.projectConfigFile),
-    loadConfigFile(paths.localProjectConfigFile)
-  ]);
-
-  if (!globalConfig) {
+  if (!layers.global.config) {
     return {
       config: null,
       isProjectContext: false,
-      globalConfigPath: paths.globalConfigFile,
-      projectConfigPath: paths.projectConfigFile,
-      localProjectConfigPath: paths.localProjectConfigFile
+      globalConfigPath: layers.global.configPath,
+      projectConfigPath: layers.project.configPath,
+      localProjectConfigPath: layers.local.configPath
     };
   }
 
-  const isProjectContext = projectConfig !== null;
-  const config = isProjectContext ? mergeConfigLayers(globalConfig, projectConfig, localProjectConfig) : globalConfig;
+  const isProjectContext = layers.project.config !== null;
+  const config = isProjectContext
+    ? mergeConfigLayers(layers.global.config, layers.project.config, layers.local.config)
+    : layers.global.config;
 
   return {
     config,
     isProjectContext,
-    globalConfigPath: paths.globalConfigFile,
-    projectConfigPath: paths.projectConfigFile,
-    localProjectConfigPath: paths.localProjectConfigFile
+    globalConfigPath: layers.global.configPath,
+    projectConfigPath: layers.project.configPath,
+    localProjectConfigPath: layers.local.configPath
   };
 }
 

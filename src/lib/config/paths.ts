@@ -1,7 +1,14 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { getAssistantSkillPaths } from "../assistants/registry";
 
 export const SKIUI_GLOBAL_CONFIG_DIR_ENV = "SKIUI_GLOBAL_CONFIG_DIR";
+
+export const PROJECT_GITIGNORE_LINES = [
+  ".skiui/repos",
+  ".skiui/skiui.local.json",
+  ...getAssistantSkillPaths("project")
+];
 
 export type ResolvedConfigPaths = {
   globalDir: string;

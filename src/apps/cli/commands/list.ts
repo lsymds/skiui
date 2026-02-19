@@ -1,5 +1,5 @@
 import type { Argv } from "yargs";
-import { listEnabledSkills, type EnabledSkillListEntry } from "../../../lib/config/skills";
+import { listEnabledSkills, type EnabledSkillListEntry } from "../../../lib/config/skills/index";
 
 export function registerListCommand(cli: Argv) {
   return cli.command(

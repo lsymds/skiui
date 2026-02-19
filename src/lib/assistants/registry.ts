@@ -8,232 +8,64 @@ export type AssistantDefinition = {
   globalRulePaths: string[];
 };
 
+type AssistantDefinitionInput = {
+  skillPaths?: string[];
+  rulePaths?: string[];
+  projectSkillPaths?: string[];
+  globalSkillPaths?: string[];
+  projectRulePaths?: string[];
+  globalRulePaths?: string[];
+};
+
+function defineAssistant(id: string, input: AssistantDefinitionInput): AssistantDefinition {
+  const sharedSkillPaths = input.skillPaths ?? [];
+  const sharedRulePaths = input.rulePaths ?? [];
+
+  return {
+    id,
+    projectSkillPaths: input.projectSkillPaths ?? sharedSkillPaths,
+    globalSkillPaths: input.globalSkillPaths ?? sharedSkillPaths,
+    projectRulePaths: input.projectRulePaths ?? sharedRulePaths,
+    globalRulePaths: input.globalRulePaths ?? sharedRulePaths
+  };
+}
+
 export const ASSISTANT_DEFINITIONS: AssistantDefinition[] = [
-  {
-    id: "agentsmd",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "copilot",
-    projectSkillPaths: [".claude/skills"],
-    globalSkillPaths: [".claude/skills"],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "claude",
-    projectSkillPaths: [".claude/skills"],
-    globalSkillPaths: [".claude/skills"],
-    projectRulePaths: ["CLAUDE.md"],
-    globalRulePaths: ["CLAUDE.md"]
-  },
-  {
-    id: "codex",
-    projectSkillPaths: [".codex/skills"],
-    globalSkillPaths: [".codex/skills"],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "pi",
-    projectSkillPaths: [".pi/skills"],
-    globalSkillPaths: [".pi/skills"],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "jules",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "cursor",
-    projectSkillPaths: [".cursor/skills"],
-    globalSkillPaths: [".cursor/skills"],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "windsurf",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "cline",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: [".clinerules"],
-    globalRulePaths: [".clinerules"]
-  },
-  {
-    id: "crush",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: ["CRUSH.md"],
-    globalRulePaths: ["CRUSH.md"]
-  },
-  {
-    id: "amp",
-    projectSkillPaths: [".agents/skills"],
-    globalSkillPaths: [".agents/skills"],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "antigravity",
-    projectSkillPaths: [".agent/skills"],
-    globalSkillPaths: [".agent/skills"],
-    projectRulePaths: [".agent/rules/ruler.md"],
-    globalRulePaths: [".agent/rules/ruler.md"]
-  },
-  {
-    id: "amazonqcli",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: [".amazonq/rules/ruler_q_rules.md"],
-    globalRulePaths: [".amazonq/rules/ruler_q_rules.md"]
-  },
-  {
-    id: "aider",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: ["AGENTS.md", ".aider.conf.yml"],
-    globalRulePaths: ["AGENTS.md", ".aider.conf.yml"]
-  },
-  {
-    id: "firebase",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: [".idx/airules.md"],
-    globalRulePaths: [".idx/airules.md"]
-  },
-  {
-    id: "openhands",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: [".openhands/microagents/repo.md"],
-    globalRulePaths: [".openhands/microagents/repo.md"]
-  },
-  {
-    id: "gemini-cli",
-    projectSkillPaths: [".gemini/skills"],
-    globalSkillPaths: [".gemini/skills"],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "junie",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: [".junie/guidelines.md"],
-    globalRulePaths: [".junie/guidelines.md"]
-  },
-  {
-    id: "augmentcode",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: [".augment/rules/ruler_augment_instructions.md"],
-    globalRulePaths: [".augment/rules/ruler_augment_instructions.md"]
-  },
-  {
-    id: "kilocode",
-    projectSkillPaths: [".claude/skills"],
-    globalSkillPaths: [".claude/skills"],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "opencode",
-    projectSkillPaths: [".opencode/skills"],
-    globalSkillPaths: [".opencode/skills"],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "goose",
-    projectSkillPaths: [".agents/skills"],
-    globalSkillPaths: [".agents/skills"],
-    projectRulePaths: [".goosehints"],
-    globalRulePaths: [".goosehints"]
-  },
-  {
-    id: "qwen",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "roo",
-    projectSkillPaths: [".roo/skills"],
-    globalSkillPaths: [".roo/skills"],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "zed",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "trae",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: [".trae/rules/project_rules.md"],
-    globalRulePaths: [".trae/rules/project_rules.md"]
-  },
-  {
-    id: "warp",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: ["WARP.md"],
-    globalRulePaths: ["WARP.md"]
-  },
-  {
-    id: "kiro",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: [".kiro/steering/ruler_kiro_instructions.md"],
-    globalRulePaths: [".kiro/steering/ruler_kiro_instructions.md"]
-  },
-  {
-    id: "firebender",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: ["firebender.json"],
-    globalRulePaths: ["firebender.json"]
-  },
-  {
-    id: "factory",
-    projectSkillPaths: [".factory/skills"],
-    globalSkillPaths: [".factory/skills"],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "mistral",
-    projectSkillPaths: [".vibe/skills"],
-    globalSkillPaths: [".vibe/skills"],
-    projectRulePaths: ["AGENTS.md"],
-    globalRulePaths: ["AGENTS.md"]
-  },
-  {
-    id: "jetbrains-ai-assistant",
-    projectSkillPaths: [],
-    globalSkillPaths: [],
-    projectRulePaths: [".aiassistant/rules/AGENTS.md"],
-    globalRulePaths: [".aiassistant/rules/AGENTS.md"]
-  }
+  defineAssistant("agentsmd", { rulePaths: ["AGENTS.md"] }),
+  defineAssistant("copilot", { skillPaths: [".claude/skills"], rulePaths: ["AGENTS.md"] }),
+  defineAssistant("claude", { skillPaths: [".claude/skills"], rulePaths: ["CLAUDE.md"] }),
+  defineAssistant("codex", { skillPaths: [".codex/skills"], rulePaths: ["AGENTS.md"] }),
+  defineAssistant("pi", { skillPaths: [".pi/skills"], rulePaths: ["AGENTS.md"] }),
+  defineAssistant("jules", { rulePaths: ["AGENTS.md"] }),
+  defineAssistant("cursor", { skillPaths: [".cursor/skills"], rulePaths: ["AGENTS.md"] }),
+  defineAssistant("windsurf", { rulePaths: ["AGENTS.md"] }),
+  defineAssistant("cline", { rulePaths: [".clinerules"] }),
+  defineAssistant("crush", { rulePaths: ["CRUSH.md"] }),
+  defineAssistant("amp", { skillPaths: [".agents/skills"], rulePaths: ["AGENTS.md"] }),
+  defineAssistant("antigravity", { skillPaths: [".agent/skills"], rulePaths: [".agent/rules/ruler.md"] }),
+  defineAssistant("amazonqcli", { rulePaths: [".amazonq/rules/ruler_q_rules.md"] }),
+  defineAssistant("aider", { rulePaths: ["AGENTS.md", ".aider.conf.yml"] }),
+  defineAssistant("firebase", { rulePaths: [".idx/airules.md"] }),
+  defineAssistant("openhands", { rulePaths: [".openhands/microagents/repo.md"] }),
+  defineAssistant("gemini-cli", { skillPaths: [".gemini/skills"], rulePaths: ["AGENTS.md"] }),
+  defineAssistant("junie", { rulePaths: [".junie/guidelines.md"] }),
+  defineAssistant("augmentcode", { rulePaths: [".augment/rules/ruler_augment_instructions.md"] }),
+  defineAssistant("kilocode", { skillPaths: [".claude/skills"], rulePaths: ["AGENTS.md"] }),
+  defineAssistant("opencode", { skillPaths: [".opencode/skills"], rulePaths: ["AGENTS.md"] }),
+  defineAssistant("goose", { skillPaths: [".agents/skills"], rulePaths: [".goosehints"] }),
+  defineAssistant("qwen", { rulePaths: ["AGENTS.md"] }),
+  defineAssistant("roo", { skillPaths: [".roo/skills"], rulePaths: ["AGENTS.md"] }),
+  defineAssistant("zed", { rulePaths: ["AGENTS.md"] }),
+  defineAssistant("trae", { rulePaths: [".trae/rules/project_rules.md"] }),
+  defineAssistant("warp", { rulePaths: ["WARP.md"] }),
+  defineAssistant("kiro", { rulePaths: [".kiro/steering/ruler_kiro_instructions.md"] }),
+  defineAssistant("firebender", { rulePaths: ["firebender.json"] }),
+  defineAssistant("factory", { skillPaths: [".factory/skills"], rulePaths: ["AGENTS.md"] }),
+  defineAssistant("mistral", { skillPaths: [".vibe/skills"], rulePaths: ["AGENTS.md"] }),
+  defineAssistant("jetbrains-ai-assistant", { rulePaths: [".aiassistant/rules/AGENTS.md"] })
 ];
+
+type Scope = "project" | "global";
 
 export function createDefaultAssistantsConfig(): Record<string, AssistantStatus> {
   return ASSISTANT_DEFINITIONS.reduce<Record<string, AssistantStatus>>((result, assistant) => {
@@ -242,38 +74,33 @@ export function createDefaultAssistantsConfig(): Record<string, AssistantStatus>
   }, {});
 }
 
-export function getAssistantSkillPaths(scope: "project" | "global"): string[] {
-  const uniquePaths = new Set<string>();
-
-  for (const assistant of ASSISTANT_DEFINITIONS) {
-    const paths = scope === "global" ? assistant.globalSkillPaths : assistant.projectSkillPaths;
-
-    for (const path of paths) {
-      uniquePaths.add(path);
-    }
-  }
-
-  return [...uniquePaths];
+export function getAssistantSkillPaths(scope: Scope): string[] {
+  return getUniquePaths(scope, getAssistantSkillPathsForScope);
 }
 
-export function getAssistantRulePaths(scope: "project" | "global"): string[] {
-  const uniquePaths = new Set<string>();
-
-  for (const assistant of ASSISTANT_DEFINITIONS) {
-    const paths = scope === "global" ? assistant.globalRulePaths : assistant.projectRulePaths;
-
-    for (const path of paths) {
-      uniquePaths.add(path);
-    }
-  }
-
-  return [...uniquePaths];
+export function getAssistantRulePaths(scope: Scope): string[] {
+  return getUniquePaths(scope, getAssistantRulePathsForScope);
 }
 
-export function getAssistantSkillPathsForScope(assistant: AssistantDefinition, scope: "project" | "global"): string[] {
+export function getAssistantSkillPathsForScope(assistant: AssistantDefinition, scope: Scope): string[] {
   return scope === "global" ? assistant.globalSkillPaths : assistant.projectSkillPaths;
 }
 
-export function getAssistantRulePathsForScope(assistant: AssistantDefinition, scope: "project" | "global"): string[] {
+export function getAssistantRulePathsForScope(assistant: AssistantDefinition, scope: Scope): string[] {
   return scope === "global" ? assistant.globalRulePaths : assistant.projectRulePaths;
+}
+
+function getUniquePaths(
+  scope: Scope,
+  pathSelector: (assistant: AssistantDefinition, scope: Scope) => string[]
+): string[] {
+  const uniquePaths = new Set<string>();
+
+  for (const assistant of ASSISTANT_DEFINITIONS) {
+    for (const path of pathSelector(assistant, scope)) {
+      uniquePaths.add(path);
+    }
+  }
+
+  return [...uniquePaths];
 }

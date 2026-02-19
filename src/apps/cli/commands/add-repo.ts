@@ -1,5 +1,5 @@
 import type { Argv } from "yargs";
-import { addRepository } from "../../../lib/config/skills";
+import { addRepository } from "../../../lib/config/skills/index";
 import { applyConfiguredSkills } from "../../../lib/repos/apply";
 
 type AddRepoArgs = {
@@ -29,8 +29,8 @@ export function registerAddRepoCommand(cli: Argv) {
         }),
     async (args) => {
       const result = await addRepository({
-        repository: args.repo,
-        repositoryName: args.name,
+        repository: args.repo.trim(),
+        repositoryName: args.name?.trim(),
         global: args.global ?? false
       });
 

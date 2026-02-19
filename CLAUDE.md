@@ -17,5 +17,5 @@ skiui is a TUI and CLI based multi-agent skill manager
 ## Testing
 
 - Override global config path in tests with `SKIUI_GLOBAL_CONFIG_DIR` (always point to a temp dir)
-- Prefer testing through public entrypoints: CLI (`src/apps/cli/index.ts`) or config services (`initConfig`, `loadEffectiveConfig`, `addSkill`, `listEnabledSkills`)
+- Prefer testing through public entrypoints: CLI (`src/apps/cli/index.ts`) or config services (`initConfig`, `loadEffectiveConfig`, `addRepository`, `enableSkill`, `listEnabledSkills`)
 - For service-level tests, pass explicit `cwd` and `env` options; do not rely on real user home/config paths

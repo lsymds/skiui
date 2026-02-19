@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { applyConfiguredSkills } from "./apply";
-import { addSkill } from "../config/skills";
+import { applyConfigured } from "./index";
+import { addSkill } from "../testing/add-skill";
 import { initConfig } from "../config/service";
 import { createSkiuiTestEnv, createTempPathManager } from "../testing/test-env";
 import { isSymlink, pathExists } from "../utils/fs";
@@ -14,7 +14,7 @@ afterEach(async () => {
   await tempPaths.cleanup();
 });
 
-test("applyConfiguredSkills syncs catalog metadata and links enabled project skills", async () => {
+test("applyConfigured syncs catalog metadata and links enabled project skills", async () => {
   const harness = await setupProjectHarness();
 
   const localSkillDirectory = join(harness.projectDir, ".skiui", "local", "my-skill");
@@ -32,7 +32,7 @@ test("applyConfiguredSkills syncs catalog metadata and links enabled project ski
 
   await setAssistantState(join(harness.projectDir, ".skiui", "skiui.json"), "claude", "enabled");
 
-  const result = await applyConfiguredSkills({ cwd: harness.projectDir, env: harness.env });
+  const result = await applyConfigured({ cwd: harness.projectDir, env: harness.env });
 
   expect(result.missingSkills).toHaveLength(0);
   expect(result.scopes.some((scope) => scope.scope === "project" && scope.skillsLinked > 0)).toBe(true);
@@ -62,7 +62,7 @@ test("applyConfiguredSkills syncs catalog metadata and links enabled project ski
   expect(mySkill?.enabled).toBe(true);
 });
 
-test("applyConfiguredSkills extracts description from frontmatter metadata", async () => {
+test("applyConfigured extracts description from frontmatter metadata", async () => {
   const harness = await setupProjectHarness();
 
   const localSkillDirectory = join(harness.projectDir, ".skiui", "local", "frontmatter-skill");
@@ -81,7 +81,7 @@ test("applyConfiguredSkills extracts description from frontmatter metadata", asy
     env: harness.env
   });
 
-  const result = await applyConfiguredSkills({ cwd: harness.projectDir, env: harness.env });
+  const result = await applyConfigured({ cwd: harness.projectDir, env: harness.env });
   expect(result.missingSkills).toHaveLength(0);
 
   const projectConfig = await readJson<{ repositories: Array<{ skills: Array<{ path: string; description?: string }> }> }>(
@@ -94,7 +94,7 @@ test("applyConfiguredSkills extracts description from frontmatter metadata", asy
   expect(frontmatterSkill?.description).toBe("Description from frontmatter metadata.");
 });
 
-test("applyConfiguredSkills clones vercel git repository and extracts frontmatter description", async () => {
+test("applyConfigured clones vercel git repository and extracts frontmatter description", async () => {
   const harness = await setupProjectHarness();
 
   await addSkill({
@@ -108,7 +108,7 @@ test("applyConfiguredSkills clones vercel git repository and extracts frontmatte
 
   await setAssistantState(join(harness.projectDir, ".skiui", "skiui.json"), "claude", "enabled");
 
-  const result = await applyConfiguredSkills({ cwd: harness.projectDir, env: harness.env });
+  const result = await applyConfigured({ cwd: harness.projectDir, env: harness.env });
 
   expect(result.missingSkills).toHaveLength(0);
   expect(result.scopes.some((scope) => scope.scope === "project" && scope.repositoriesSynced > 0)).toBe(true);
@@ -133,7 +133,7 @@ test("applyConfiguredSkills clones vercel git repository and extracts frontmatte
   expect(skill?.description).not.toBe("---");
 }, 30_000);
 
-test("applyConfiguredSkills returns missing enabled skills", async () => {
+test("applyConfigured returns missing enabled skills", async () => {
   const harness = await setupProjectHarness();
 
   await addSkill({
@@ -147,7 +147,7 @@ test("applyConfiguredSkills returns missing enabled skills", async () => {
 
   await setAssistantState(join(harness.projectDir, ".skiui", "skiui.json"), "claude", "enabled");
 
-  const result = await applyConfiguredSkills({ cwd: harness.projectDir, env: harness.env });
+  const result = await applyConfigured({ cwd: harness.projectDir, env: harness.env });
 
   expect(result.missingSkills).toHaveLength(1);
   expect(result.missingSkills[0]).toEqual({
@@ -157,7 +157,7 @@ test("applyConfiguredSkills returns missing enabled skills", async () => {
   });
 });
 
-test("applyConfiguredSkills rejects overlapping fs source and assistant destination paths", async () => {
+test("applyConfigured rejects overlapping fs source and assistant destination paths", async () => {
   const harness = await setupProjectHarness();
   const overlappingSkillDirectory = join(harness.projectDir, ".claude", "skills", "my-skill");
 
@@ -175,13 +175,13 @@ test("applyConfiguredSkills rejects overlapping fs source and assistant destinat
 
   await setAssistantState(join(harness.projectDir, ".skiui", "skiui.json"), "claude", "enabled");
 
-  await expect(applyConfiguredSkills({ cwd: harness.projectDir, env: harness.env })).rejects.toThrow("overlap");
+  await expect(applyConfigured({ cwd: harness.projectDir, env: harness.env })).rejects.toThrow("overlap");
 
   expect(await pathExists(join(overlappingSkillDirectory, "SKILL.md"))).toBe(true);
   expect(await isSymlink(overlappingSkillDirectory)).toBe(false);
 });
 
-test("applyConfiguredSkills applies global scope to HOME and project scope to cwd", async () => {
+test("applyConfigured applies global scope to HOME and project scope to cwd", async () => {
   const harness = await setupProjectHarness();
   const globalFsSource = await tempPaths.createTempPath("skiui-global-skills-");
 
@@ -215,7 +215,7 @@ test("applyConfiguredSkills applies global scope to HOME and project scope to cw
   await setAssistantState(join(harness.globalDir, "skiui.json"), "opencode", "enabled");
   await setAssistantState(join(harness.projectDir, ".skiui", "skiui.json"), "claude", "enabled");
 
-  const result = await applyConfiguredSkills({ cwd: harness.projectDir, env: harness.env });
+  const result = await applyConfigured({ cwd: harness.projectDir, env: harness.env });
 
   expect(result.missingSkills).toHaveLength(0);
   expect(await pathExists(join(harness.homeDir, ".claude", "skills", "global-skill"))).toBe(true);
@@ -223,7 +223,7 @@ test("applyConfiguredSkills applies global scope to HOME and project scope to cw
   expect(await pathExists(join(harness.projectDir, ".claude", "skills", "project-skill"))).toBe(true);
 });
 
-test("applyConfiguredSkills links rules to enabled assistants", async () => {
+test("applyConfigured links rules to enabled assistants", async () => {
   const harness = await setupProjectHarness();
 
   await setAssistantState(join(harness.projectDir, ".skiui", "skiui.json"), "claude", "enabled");
@@ -231,7 +231,7 @@ test("applyConfiguredSkills links rules to enabled assistants", async () => {
 
   await writeFile(join(harness.projectDir, ".skiui", "AGENTS.md"), "# Project Rules\n", "utf8");
 
-  const result = await applyConfiguredSkills({ cwd: harness.projectDir, env: harness.env });
+  const result = await applyConfigured({ cwd: harness.projectDir, env: harness.env });
 
   expect(result.missingSkills).toHaveLength(0);
   expect(result.scopes.some((scope) => scope.scope === "project" && scope.rulesLinked === 2)).toBe(true);
@@ -241,7 +241,7 @@ test("applyConfiguredSkills links rules to enabled assistants", async () => {
   expect(await isSymlink(join(harness.projectDir, ".clinerules"))).toBe(true);
 });
 
-test("applyConfiguredSkills uses configured rulesPath for each scope independently", async () => {
+test("applyConfigured uses configured rulesPath for each scope independently", async () => {
   const harness = await setupProjectHarness();
 
   const globalRulesPath = join(harness.globalDir, "global-rules.md");
@@ -258,7 +258,7 @@ test("applyConfiguredSkills uses configured rulesPath for each scope independent
   await setAssistantState(globalConfigPath, "claude", "enabled");
   await setAssistantState(join(harness.projectDir, ".skiui", "skiui.json"), "claude", "enabled");
 
-  const result = await applyConfiguredSkills({ cwd: harness.projectDir, env: harness.env });
+  const result = await applyConfigured({ cwd: harness.projectDir, env: harness.env });
 
   expect(result.missingSkills).toHaveLength(0);
   expect(await readFile(join(harness.homeDir, "CLAUDE.md"), "utf8")).toBe("# Global Rules\n");

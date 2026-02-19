@@ -1,5 +1,5 @@
 import type { Argv } from "yargs";
-import { enableSkill } from "../../../lib/config/skills";
+import { enableSkill } from "../../../lib/config/skills/index";
 
 type EnableSkillArgs = {
   repositoryName: string;
@@ -28,8 +28,8 @@ export function registerEnableSkillCommand(cli: Argv) {
         }),
     async (args) => {
       const result = await enableSkill({
-        repositoryName: args.repositoryName,
-        skillName: args.skillName,
+        repositoryName: args.repositoryName.trim(),
+        skillName: args.skillName.trim(),
         global: args.global ?? false
       });
 

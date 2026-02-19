@@ -1,3 +1,4 @@
+import { cloneRepository } from "../utils/clone";
 import { CONFIG_VERSION, type RepositoryConfig, type SkiuiConfig, type SkillConfig } from "./types";
 
 export function mergeConfigLayers(
@@ -75,12 +76,4 @@ function mergeSkills(baseSkills: SkillConfig[], overrideSkills: SkillConfig[]): 
   }
 
   return [...byPath.values()];
-}
-
-function cloneRepository(repository: RepositoryConfig): RepositoryConfig {
-  return {
-    ...repository,
-    source: { ...repository.source },
-    skills: repository.skills.map((skill) => ({ ...skill }))
-  };
 }

@@ -1,18 +1,14 @@
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { loadConfigLayers } from "../config/layers";
 import { mergeConfigLayers } from "../config/merge";
-import { resolveConfigPaths } from "../config/paths";
-import { loadConfigFile, writeConfigFile } from "../config/store";
-import { CONFIG_VERSION, DEFAULT_RULES_PATH, type RepositoryConfig, type SkiuiConfig, type SkillConfig } from "../config/types";
-import {
-  ASSISTANT_DEFINITIONS,
-  getAssistantRulePathsForScope,
-  getAssistantSkillPaths,
-  getAssistantSkillPathsForScope
-} from "../assistants/registry";
+import { PROJECT_GITIGNORE_LINES } from "../config/paths";
+import { writeConfigFile } from "../config/store";
+import { CONFIG_VERSION, type RepositoryConfig, type SkiuiConfig, type SkillConfig } from "../config/types";
+import { ASSISTANT_DEFINITIONS, getAssistantSkillPathsForScope } from "../assistants/registry";
 import { CliError } from "../utils/errors";
-import { ensureDirectory, makeSymlink, pathExists, upsertLines } from "../utils/fs";
+import { ensureDirectory, makeSymlink, upsertLines } from "../utils/fs";
+import { discoverSkills } from "./skill-discovery";
 import { syncRepositoryToCache } from "./sync";
 
 type ScopeName = "global" | "project";
@@ -47,65 +43,54 @@ type ScopeCatalog = {
   catalogsByRepository: Map<string, RepositoryCatalog>;
 };
 
-const PROJECT_GITIGNORE_LINES = [
-  ".skiui/repos",
-  ".skiui/skiui.local.json",
-  ...getAssistantSkillPaths("project")
-];
-
 export async function applyConfiguredSkills(options?: {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
 }): Promise<ApplyResult> {
   const cwd = options?.cwd ?? process.cwd();
   const env = options?.env ?? process.env;
-  const paths = resolveConfigPaths({ cwd, env });
+  const layers = await loadConfigLayers(cwd, env);
 
-  const [globalConfig, projectConfig, localConfig] = await Promise.all([
-    loadConfigFile(paths.globalConfigFile),
-    loadConfigFile(paths.projectConfigFile),
-    loadConfigFile(paths.localProjectConfigFile)
-  ]);
-
-  if (!globalConfig) {
+  if (!layers.global.config) {
     throw new CliError("No skiui configuration found. Run `skiui init` first.");
   }
 
   const scopes: ApplyScopeResult[] = [];
   const missingSkills: MissingSkill[] = [];
 
+  const globalDir = dirname(layers.global.configPath);
+
   const globalScope = await syncConfigScope({
     scope: "global",
-    config: globalConfig,
-    configPath: paths.globalConfigFile,
-    contextRoot: paths.globalDir
+    config: layers.global.config,
+    configPath: layers.global.configPath,
+    contextRoot: globalDir
   });
 
   const globalApply = await applyScopeSkills({
     scope: globalScope,
-    assistantRoot: resolveHomeDir(env),
-    contextRoot: paths.globalDir
+    assistantRoot: resolveHomeDir(env)
   });
 
   scopes.push(globalApply.result);
   missingSkills.push(...globalApply.missingSkills);
 
-  if (projectConfig) {
+  if (layers.project.config) {
     const projectScope = await syncConfigScope({
       scope: "project",
-      config: projectConfig,
-      configPath: paths.projectConfigFile,
+      config: layers.project.config,
+      configPath: layers.project.configPath,
       contextRoot: cwd
     });
 
     let projectEffectiveConfig = projectScope.config;
     let projectCatalogs = projectScope.catalogsByRepository;
 
-    if (localConfig) {
+    if (layers.local.config) {
       const localScope = await syncConfigScope({
         scope: "project",
-        config: localConfig,
-        configPath: paths.localProjectConfigFile,
+        config: layers.local.config,
+        configPath: layers.local.configPath,
         contextRoot: cwd
       });
 
@@ -119,8 +104,7 @@ export async function applyConfiguredSkills(options?: {
         config: projectEffectiveConfig,
         catalogsByRepository: projectCatalogs
       },
-      assistantRoot: cwd,
-      contextRoot: cwd
+      assistantRoot: cwd
     });
 
     await upsertLines(join(cwd, ".gitignore"), PROJECT_GITIGNORE_LINES);
@@ -196,7 +180,6 @@ async function syncConfigScope(options: {
 async function applyScopeSkills(options: {
   scope: ScopeCatalog;
   assistantRoot: string;
-  contextRoot: string;
 }): Promise<{ result: ApplyScopeResult; missingSkills: MissingSkill[] }> {
   const enabledAssistants = ASSISTANT_DEFINITIONS.filter(
     (assistant) => options.scope.config.assistants[assistant.id] === "enabled"
@@ -204,7 +187,7 @@ async function applyScopeSkills(options: {
 
   const missingSkills: MissingSkill[] = [];
   let skillsLinked = 0;
-  let rulesLinked = 0;
+  const rulesLinked = 0;
 
   for (const repository of options.scope.config.repositories) {
     const catalog = options.scope.catalogsByRepository.get(repository.name);
@@ -255,41 +238,6 @@ async function applyScopeSkills(options: {
     }
   }
 
-  const rulesSourcePath = resolveRulesSourcePath(options.scope.config.rulesPath, options.contextRoot);
-
-  if (
-    options.scope.scope === "project" &&
-    isDefaultRulesPath(options.scope.config.rulesPath) &&
-    !(await pathExists(rulesSourcePath))
-  ) {
-    await ensureDirectory(dirname(rulesSourcePath));
-    await writeFile(rulesSourcePath, "", "utf8");
-  }
-
-  if (await pathExists(rulesSourcePath)) {
-    const linkedRuleDestinations = new Set<string>();
-
-    for (const assistant of enabledAssistants) {
-      for (const rulePath of getAssistantRulePathsForScope(assistant, options.scope.scope)) {
-        const destinationPath = isAbsolute(rulePath) ? rulePath : join(options.assistantRoot, rulePath);
-        const destinationKey = resolve(destinationPath);
-
-        if (linkedRuleDestinations.has(destinationKey)) {
-          continue;
-        }
-
-        linkedRuleDestinations.add(destinationKey);
-        assertLinkPathsDoNotOverlap({
-          sourcePath: rulesSourcePath,
-          destinationPath,
-          context: `rules to assistant \`${assistant.id}\``
-        });
-        await makeSymlink(rulesSourcePath, destinationPath, { type: "file" });
-        rulesLinked += 1;
-      }
-    }
-  }
-
   return {
     result: {
       scope: options.scope.scope,
@@ -336,144 +284,6 @@ function mergeRepositorySkills(
   return merged;
 }
 
-async function discoverSkills(skillRootPath: string): Promise<Array<{ path: string; name: string; description?: string }>> {
-  if (!(await pathExists(skillRootPath))) {
-    return [];
-  }
-
-  const skillFiles: string[] = [];
-  await collectSkillFiles(skillRootPath, skillFiles);
-
-  const skills: Array<{ path: string; name: string; description?: string }> = [];
-
-  for (const skillFile of skillFiles) {
-    const skillDirectory = dirname(skillFile);
-    const relativeDirectory = toConfigPath(relative(skillRootPath, skillDirectory));
-
-    if (relativeDirectory.length === 0) {
-      continue;
-    }
-
-    const metadata = await parseSkillMetadata(skillFile, relativeDirectory);
-    skills.push({
-      path: relativeDirectory,
-      name: metadata.name,
-      description: metadata.description
-    });
-  }
-
-  skills.sort((left, right) => left.path.localeCompare(right.path));
-  return skills;
-}
-
-async function collectSkillFiles(directory: string, files: string[]): Promise<void> {
-  const entries = await readdir(directory, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const entryPath = join(directory, entry.name);
-
-    if (entry.isDirectory()) {
-      await collectSkillFiles(entryPath, files);
-      continue;
-    }
-
-    if (entry.isFile() && entry.name === "SKILL.md") {
-      files.push(entryPath);
-    }
-  }
-}
-
-async function parseSkillMetadata(skillFilePath: string, fallbackName: string): Promise<{ name: string; description?: string }> {
-  const contents = await readFile(skillFilePath, "utf8");
-  const frontmatter = extractFrontmatter(contents);
-  const body = frontmatter ? contents.slice(frontmatter.blockLength) : contents;
-
-  const headingMatch = body.match(/^#\s+(.+)$/m);
-  const name = headingMatch?.[1]?.trim() || frontmatter?.metadata.name || fallbackName;
-
-  const description = frontmatter?.metadata.description ?? findFirstDescriptionLine(body);
-
-  return {
-    name,
-    description
-  };
-}
-
-function extractFrontmatter(contents: string): {
-  metadata: { name?: string; description?: string };
-  blockLength: number;
-} | null {
-  const match = contents.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
-  if (!match || !match[0] || match[1] === undefined) {
-    return null;
-  }
-
-  const metadata = parseSimpleFrontmatter(match[1]);
-
-  return {
-    metadata,
-    blockLength: match[0].length
-  };
-}
-
-function parseSimpleFrontmatter(frontmatter: string): { name?: string; description?: string } {
-  const metadata: { name?: string; description?: string } = {};
-
-  for (const line of frontmatter.split(/\r?\n/)) {
-    const match = line.match(/^\s*([a-zA-Z0-9_-]+)\s*:\s*(.+?)\s*$/);
-    if (!match) {
-      continue;
-    }
-
-    const key = match[1]?.toLowerCase();
-    const rawValue = match[2];
-    if (!key || !rawValue) {
-      continue;
-    }
-
-    const value = trimQuotedValue(rawValue);
-
-    if (key === "name") {
-      metadata.name = value;
-    }
-
-    if (key === "description") {
-      metadata.description = value;
-    }
-  }
-
-  return metadata;
-}
-
-function trimQuotedValue(value: string): string {
-  if (value.length >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
-    return value.slice(1, -1);
-  }
-
-  if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) {
-    return value.slice(1, -1);
-  }
-
-  return value;
-}
-
-function findFirstDescriptionLine(contents: string): string | undefined {
-  const lines = contents
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-
-  for (const line of lines) {
-    if (line.startsWith("#")) {
-      continue;
-    }
-
-    return line;
-  }
-
-  return undefined;
-}
-
 function mergeProjectLocal(projectConfig: SkiuiConfig, localConfig: SkiuiConfig): SkiuiConfig {
   return mergeConfigLayers(
     {
@@ -510,14 +320,6 @@ function resolveHomeDir(env: NodeJS.ProcessEnv): string {
   return homedir();
 }
 
-function toConfigPath(path: string): string {
-  if (path.length === 0) {
-    return path;
-  }
-
-  return path.split("\\").join("/");
-}
-
 function assertLinkPathsDoNotOverlap(options: {
   sourcePath: string;
   destinationPath: string;
@@ -529,18 +331,6 @@ function assertLinkPathsDoNotOverlap(options: {
   if (source === destination || isDescendantPath(source, destination) || isDescendantPath(destination, source)) {
     throw new CliError(`Cannot link ${options.context} because source and destination paths overlap: ${source} <-> ${destination}`);
   }
-}
-
-function resolveRulesSourcePath(rulesPath: string | undefined, contextRoot: string): string {
-  const configuredPath = rulesPath?.trim();
-  const effectivePath = configuredPath && configuredPath.length > 0 ? configuredPath : DEFAULT_RULES_PATH;
-
-  return isAbsolute(effectivePath) ? effectivePath : resolve(contextRoot, effectivePath);
-}
-
-function isDefaultRulesPath(rulesPath: string | undefined): boolean {
-  const configuredPath = rulesPath?.trim();
-  return !configuredPath || configuredPath.length === 0 || configuredPath === DEFAULT_RULES_PATH;
 }
 
 function isDescendantPath(path: string, candidateAncestor: string): boolean {

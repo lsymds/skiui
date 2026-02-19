@@ -2,7 +2,13 @@ import { rm } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { CliError } from "../utils/errors";
 import { ensureDirectory, pathExists } from "../utils/fs";
+import { normalizeGitUrl } from "../utils/git";
 import type { RepositoryConfig } from "../config/types";
+import type { GitRepositorySource } from "./types";
+
+type GitRepositoryConfig = Omit<RepositoryConfig, "source"> & {
+  source: GitRepositorySource;
+};
 
 export type SyncedRepository = {
   cacheRepositoryPath: string;
@@ -17,22 +23,21 @@ export async function syncRepositoryToCache(options: {
   const { repository } = options;
 
   if (repository.source.type === "git") {
-    return syncGitRepositoryToCache(options);
+    return syncGitRepositoryToCache({
+      ...options,
+      repository: repository as GitRepositoryConfig
+    });
   }
 
   return syncFsRepositoryToCache(options);
 }
 
 async function syncGitRepositoryToCache(options: {
-  repository: RepositoryConfig;
+  repository: GitRepositoryConfig;
   contextRoot: string;
   cacheRepositoryPath: string;
 }): Promise<SyncedRepository> {
   const { repository, contextRoot, cacheRepositoryPath } = options;
-
-  if (repository.source.type !== "git") {
-    throw new CliError("Internal error: expected git repository source");
-  }
 
   const repositoryUrl = resolveGitSource(repository.source.url, contextRoot);
   await ensureDirectory(dirname(cacheRepositoryPath));
@@ -68,7 +73,7 @@ async function syncGitRepositoryToCache(options: {
 }
 
 async function recloneGitRepository(
-  repository: RepositoryConfig,
+  repository: GitRepositoryConfig,
   repositoryUrl: string,
   contextRoot: string,
   cacheRepositoryPath: string
@@ -77,7 +82,7 @@ async function recloneGitRepository(
 
   const cloneArgs = ["clone", "--depth", "1"];
 
-  if (repository.source.type === "git" && repository.source.branch) {
+  if (repository.source.branch) {
     cloneArgs.push("--branch", repository.source.branch);
   }
 
@@ -174,8 +179,4 @@ function resolveGitSource(sourceUrl: string, contextRoot: string): string {
   }
 
   return resolve(contextRoot, trimmed);
-}
-
-function normalizeGitUrl(url: string): string {
-  return url.trim().replace(/\/+$/, "").replace(/\.git$/i, "");
 }
