@@ -40,6 +40,12 @@ test("applyConfiguredSkills syncs catalog metadata and links enabled project ski
   const linkedSkillPath = join(harness.projectDir, ".claude", "skills", "my-skill");
   expect(await pathExists(linkedSkillPath)).toBe(true);
   expect(await isSymlink(linkedSkillPath)).toBe(true);
+  expect(await pathExists(join(harness.projectDir, ".skiui", "repos", "local", "my-skill", "SKILL.md"))).toBe(false);
+
+  const gitignoreLines = await readGitignoreLines(harness.projectDir);
+  expect(gitignoreLines.has(".claude/skills")).toBe(true);
+  expect(gitignoreLines.has(".opencode/skills")).toBe(true);
+  expect(gitignoreLines.has(".claude")).toBe(false);
 
   const projectConfig = await readJson<{ repositories: Array<{ name: string; skills: Array<{ path: string; name: string; description?: string; enabled: boolean }> }> }>(
     join(harness.projectDir, ".skiui", "skiui.json")
@@ -147,6 +153,30 @@ test("applyConfiguredSkills returns missing enabled skills", async () => {
   });
 });
 
+test("applyConfiguredSkills rejects overlapping fs source and assistant destination paths", async () => {
+  const harness = await setupProjectHarness();
+  const overlappingSkillDirectory = join(harness.projectDir, ".claude", "skills", "my-skill");
+
+  await mkdir(overlappingSkillDirectory, { recursive: true });
+  await Bun.write(join(overlappingSkillDirectory, "SKILL.md"), "# My Skill\n\nSkill description from metadata.\n");
+
+  await addSkill({
+    sourceType: "fs",
+    sourcePath: ".claude/skills",
+    skillName: "my-skill",
+    global: false,
+    cwd: harness.projectDir,
+    env: harness.env
+  });
+
+  await setAssistantState(join(harness.projectDir, ".skiui", "skiui.json"), "claude-code", "enabled");
+
+  await expect(applyConfiguredSkills({ cwd: harness.projectDir, env: harness.env })).rejects.toThrow("overlap");
+
+  expect(await pathExists(join(overlappingSkillDirectory, "SKILL.md"))).toBe(true);
+  expect(await isSymlink(overlappingSkillDirectory)).toBe(false);
+});
+
 test("applyConfiguredSkills applies global scope to HOME and project scope to cwd", async () => {
   const harness = await setupProjectHarness();
   const globalFsSource = await tempPaths.createTempPath("skiui-global-skills-");
@@ -227,4 +257,15 @@ async function setAssistantState(
 
 async function readJson<T>(filePath: string): Promise<T> {
   return JSON.parse(await readFile(filePath, "utf8")) as T;
+}
+
+async function readGitignoreLines(projectDir: string): Promise<Set<string>> {
+  const gitignoreContents = await readFile(join(projectDir, ".gitignore"), "utf8");
+
+  return new Set(
+    gitignoreContents
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+  );
 }

@@ -41,13 +41,14 @@ test("initConfig creates project and global files and registers project", async 
 
   expect(projectConfig.repositories.some((repository) => repository.name === "local")).toBe(true);
 
-  const gitignoreContents = await readFile(join(projectDir, ".gitignore"), "utf8");
-  expect(gitignoreContents.includes(".skiui/repos")).toBe(true);
-  expect(gitignoreContents.includes(".skiui/skiui.local.json")).toBe(true);
-  expect(gitignoreContents.includes(".claude/skills")).toBe(true);
-  expect(gitignoreContents.includes(".opencode/skills")).toBe(true);
-  expect(gitignoreContents.includes(".cursor/rules")).toBe(true);
-  expect(gitignoreContents.includes(".github/instructions")).toBe(true);
+  const gitignoreLines = await readGitignoreLines(projectDir);
+  expect(gitignoreLines.has(".skiui/repos")).toBe(true);
+  expect(gitignoreLines.has(".skiui/skiui.local.json")).toBe(true);
+  expect(gitignoreLines.has(".claude/skills")).toBe(true);
+  expect(gitignoreLines.has(".opencode/skills")).toBe(true);
+  expect(gitignoreLines.has(".cursor/rules")).toBe(true);
+  expect(gitignoreLines.has(".github/instructions")).toBe(true);
+  expect(gitignoreLines.has(".claude")).toBe(false);
 
   await initConfig({
     initGlobal: false,
@@ -61,6 +62,24 @@ test("initConfig creates project and global files and registers project", async 
     projects: Array<{ path: string }>;
   };
   expect(dedupedGlobalConfig.projects.filter((project) => project.path === projectDir)).toHaveLength(1);
+});
+
+test("initConfig only ignores assistant skill paths and not assistant roots", async () => {
+  const projectDir = await tempPaths.createTempPath("skiui-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-global-");
+  const env = createSkiuiTestEnv({ globalDir });
+
+  await initConfig({
+    initGlobal: false,
+    initProject: true,
+    cwd: projectDir,
+    env
+  });
+
+  const gitignoreLines = await readGitignoreLines(projectDir);
+  expect(gitignoreLines.has(".claude/skills")).toBe(true);
+  expect(gitignoreLines.has(".opencode/skills")).toBe(true);
+  expect(gitignoreLines.has(".claude")).toBe(false);
 });
 
 test("loadEffectiveConfig returns merged config in project context", async () => {
@@ -89,3 +108,14 @@ test("loadEffectiveConfig returns merged config in project context", async () =>
   expect(result.config?.cachePath).toBe(".skiui/local-cache");
   expect(result.config?.assistants.opencode).toBe("enabled");
 });
+
+async function readGitignoreLines(projectDir: string): Promise<Set<string>> {
+  const gitignoreContents = await readFile(join(projectDir, ".gitignore"), "utf8");
+
+  return new Set(
+    gitignoreContents
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+  );
+}

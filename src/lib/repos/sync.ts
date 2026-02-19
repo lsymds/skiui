@@ -1,5 +1,5 @@
-import { cp, rename, rm } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { rm } from "node:fs/promises";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { CliError } from "../utils/errors";
 import { ensureDirectory, pathExists } from "../utils/fs";
 import type { RepositoryConfig } from "../config/types";
@@ -90,7 +90,7 @@ async function syncFsRepositoryToCache(options: {
   contextRoot: string;
   cacheRepositoryPath: string;
 }): Promise<SyncedRepository> {
-  const { repository, contextRoot, cacheRepositoryPath } = options;
+  const { repository, contextRoot } = options;
 
   if (repository.source.type !== "fs") {
     throw new CliError("Internal error: expected filesystem repository source");
@@ -105,21 +105,10 @@ async function syncFsRepositoryToCache(options: {
   }
 
   const sourceAbsolute = resolve(sourcePath);
-  const cacheAbsolute = resolve(cacheRepositoryPath);
-  assertPathsDoNotOverlap(sourceAbsolute, cacheAbsolute, repository.name);
-
-  await ensureDirectory(dirname(cacheAbsolute));
-
-  const tempCopyPath = `${cacheAbsolute}.tmp-${Date.now()}`;
-  await rm(tempCopyPath, { recursive: true, force: true });
-  await cp(sourceAbsolute, tempCopyPath, { recursive: true });
-
-  await rm(cacheAbsolute, { recursive: true, force: true });
-  await rename(tempCopyPath, cacheAbsolute);
 
   return {
-    cacheRepositoryPath: cacheAbsolute,
-    skillRootPath: cacheAbsolute
+    cacheRepositoryPath: resolve(options.cacheRepositoryPath),
+    skillRootPath: sourceAbsolute
   };
 }
 
@@ -189,23 +178,4 @@ function resolveGitSource(sourceUrl: string, contextRoot: string): string {
 
 function normalizeGitUrl(url: string): string {
   return url.trim().replace(/\/+$/, "").replace(/\.git$/i, "");
-}
-
-function assertPathsDoNotOverlap(sourcePath: string, cachePath: string, repositoryName: string): void {
-  if (sourcePath === cachePath) {
-    throw new CliError(
-      `Repository \`${repositoryName}\` has identical source and cache paths, which is unsafe: ${sourcePath}`
-    );
-  }
-
-  if (isDescendantPath(sourcePath, cachePath) || isDescendantPath(cachePath, sourcePath)) {
-    throw new CliError(
-      `Repository \`${repositoryName}\` has overlapping source and cache paths, which is unsafe: ${sourcePath} <-> ${cachePath}`
-    );
-  }
-}
-
-function isDescendantPath(path: string, candidateAncestor: string): boolean {
-  const relativePath = relative(candidateAncestor, path);
-  return relativePath.length > 0 && !relativePath.startsWith("..") && relativePath !== ".";
 }

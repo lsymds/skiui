@@ -52,9 +52,11 @@ export async function initConfig(options: InitConfigOptions): Promise<InitConfig
     await ensureDirectory(paths.projectDir);
     await ensureDirectory(paths.projectLocalSkillsDir);
 
-    const projectConfig = await loadConfigFile(paths.projectConfigFile);
-    if (!projectConfig) {
-      await writeConfigFile(paths.projectConfigFile, createDefaultProjectConfig());
+    const existingProjectConfig = await loadConfigFile(paths.projectConfigFile);
+    const projectConfig = existingProjectConfig ?? createDefaultProjectConfig();
+
+    if (!existingProjectConfig) {
+      await writeConfigFile(paths.projectConfigFile, projectConfig);
       projectCreated = true;
     }
 

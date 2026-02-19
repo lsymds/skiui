@@ -103,10 +103,13 @@ The configuration should look something like the following:
 
 ### Skill Cloning/Application
 
-When skill repositories and associated skills are enabled and subsequently applied, skills should be fetched from their relevant source
-into the configured cache path. The skills should then be catalogued in the configuration under each repository, with their name and
-description extracted from their SKILL.md metadata. Enabled skills should then be symlinked (in a cross platform way) from the cached
-path into each enabled agentic assistant skills path (i.e. to `.claude/skills` or `.opencode/skills`).
+When skill repositories and associated skills are enabled and subsequently applied, git repositories should be fetched from their
+relevant source into the configured cache path, while filesystem repositories should be read directly from their source path. The
+skills should then be catalogued in the configuration under each repository, with their name and description extracted from their
+SKILL.md metadata. Enabled skills should then be symlinked (in a cross platform way) into each enabled agentic assistant skills path
+(i.e. to `.claude/skills` or `.opencode/skills`).
+
+If a filesystem source path overlaps with a destination assistant path, the apply process should fail with a clear error.
 
 This process should also ensure relevant agentic assistant skill paths and skiui paths are excluded from Git repositories.
 

@@ -225,6 +225,13 @@ async function applyScopeSkills(options: {
             ? assistantPath
             : join(options.assistantRoot, assistantPath);
           const destinationPath = join(destinationBase, ...skill.path.split("/"));
+          assertSymlinkPathsDoNotOverlap({
+            sourcePath,
+            destinationPath,
+            repositoryName: repository.name,
+            skillPath: skill.path,
+            assistantId: assistant.id
+          });
           await makeSymlink(sourcePath, destinationPath);
           skillsLinked += 1;
         }
@@ -457,4 +464,27 @@ function toConfigPath(path: string): string {
   }
 
   return path.split("\\").join("/");
+}
+
+function assertSymlinkPathsDoNotOverlap(options: {
+  sourcePath: string;
+  destinationPath: string;
+  repositoryName: string;
+  skillPath: string;
+  assistantId: string;
+}): void {
+  const source = resolve(options.sourcePath);
+  const destination = resolve(options.destinationPath);
+
+  if (source === destination || isDescendantPath(source, destination) || isDescendantPath(destination, source)) {
+    throw new CliError(
+      `Cannot link skill \`${options.skillPath}\` from repository \`${options.repositoryName}\` to assistant ` +
+        `\`${options.assistantId}\` because source and destination paths overlap: ${source} <-> ${destination}`
+    );
+  }
+}
+
+function isDescendantPath(path: string, candidateAncestor: string): boolean {
+  const relativePath = relative(candidateAncestor, path);
+  return relativePath.length > 0 && !relativePath.startsWith("..") && relativePath !== ".";
 }

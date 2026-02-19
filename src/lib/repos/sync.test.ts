@@ -12,7 +12,7 @@ afterEach(async () => {
   await tempPaths.cleanup();
 });
 
-test("syncRepositoryToCache copies filesystem repositories into cache", async () => {
+test("syncRepositoryToCache keeps filesystem repositories at their source path", async () => {
   const workspace = await tempPaths.createTempPath("skiui-sync-");
   const sourcePath = join(workspace, "source");
   const cachePath = join(workspace, "cache", "repo");
@@ -36,18 +36,19 @@ test("syncRepositoryToCache copies filesystem repositories into cache", async ()
   });
 
   expect(synced.cacheRepositoryPath).toBe(cachePath);
-  expect(synced.skillRootPath).toBe(cachePath);
-  expect(await pathExists(join(cachePath, "my-skill", "SKILL.md"))).toBe(true);
+  expect(synced.skillRootPath).toBe(sourcePath);
+  expect(await pathExists(join(cachePath, "my-skill", "SKILL.md"))).toBe(false);
   expect(await pathExists(join(sourcePath, "my-skill", "SKILL.md"))).toBe(true);
 
-  const contents = await readFile(join(cachePath, "my-skill", "SKILL.md"), "utf8");
+  const contents = await readFile(join(sourcePath, "my-skill", "SKILL.md"), "utf8");
   expect(contents).toContain("My Skill");
 });
 
-test("syncRepositoryToCache rejects overlapping source and cache paths", async () => {
+test("syncRepositoryToCache allows identical source and cache paths for fs repositories", async () => {
   const workspace = await tempPaths.createTempPath("skiui-sync-");
   const sourcePath = join(workspace, "source");
-  await mkdir(sourcePath, { recursive: true });
+  await mkdir(join(sourcePath, "my-skill"), { recursive: true });
+  await Bun.write(join(sourcePath, "my-skill", "SKILL.md"), "# My Skill\n\nSkill description.\n");
 
   const repository: RepositoryConfig = {
     name: "repo",
@@ -58,13 +59,14 @@ test("syncRepositoryToCache rejects overlapping source and cache paths", async (
     skills: []
   };
 
-  await expect(
-    syncRepositoryToCache({
-      repository,
-      contextRoot: workspace,
-      cacheRepositoryPath: sourcePath
-    })
-  ).rejects.toThrow("identical source and cache paths");
+  const synced = await syncRepositoryToCache({
+    repository,
+    contextRoot: workspace,
+    cacheRepositoryPath: sourcePath
+  });
+
+  expect(synced.skillRootPath).toBe(sourcePath);
+  expect(await pathExists(join(sourcePath, "my-skill", "SKILL.md"))).toBe(true);
 });
 
 test("syncRepositoryToCache updates existing git cache with pull", async () => {
