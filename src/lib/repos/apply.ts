@@ -1,11 +1,16 @@
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import { mergeConfigLayers } from "../config/merge";
 import { resolveConfigPaths } from "../config/paths";
 import { loadConfigFile, writeConfigFile } from "../config/store";
-import { CONFIG_VERSION, type RepositoryConfig, type SkiuiConfig, type SkillConfig } from "../config/types";
-import { ASSISTANT_DEFINITIONS, getAssistantPathsForScope, getAssistantSkillPaths } from "../assistants/registry";
+import { CONFIG_VERSION, DEFAULT_RULES_PATH, type RepositoryConfig, type SkiuiConfig, type SkillConfig } from "../config/types";
+import {
+  ASSISTANT_DEFINITIONS,
+  getAssistantRulePathsForScope,
+  getAssistantSkillPaths,
+  getAssistantSkillPathsForScope
+} from "../assistants/registry";
 import { CliError } from "../utils/errors";
 import { ensureDirectory, makeSymlink, pathExists, upsertLines } from "../utils/fs";
 import { syncRepositoryToCache } from "./sync";
@@ -22,6 +27,7 @@ export type ApplyScopeResult = {
   scope: ScopeName;
   repositoriesSynced: number;
   skillsLinked: number;
+  rulesLinked: number;
 };
 
 export type ApplyResult = {
@@ -77,7 +83,8 @@ export async function applyConfiguredSkills(options?: {
 
   const globalApply = await applyScopeSkills({
     scope: globalScope,
-    assistantRoot: resolveHomeDir(env)
+    assistantRoot: resolveHomeDir(env),
+    contextRoot: paths.globalDir
   });
 
   scopes.push(globalApply.result);
@@ -112,7 +119,8 @@ export async function applyConfiguredSkills(options?: {
         config: projectEffectiveConfig,
         catalogsByRepository: projectCatalogs
       },
-      assistantRoot: cwd
+      assistantRoot: cwd,
+      contextRoot: cwd
     });
 
     await upsertLines(join(cwd, ".gitignore"), PROJECT_GITIGNORE_LINES);
@@ -188,6 +196,7 @@ async function syncConfigScope(options: {
 async function applyScopeSkills(options: {
   scope: ScopeCatalog;
   assistantRoot: string;
+  contextRoot: string;
 }): Promise<{ result: ApplyScopeResult; missingSkills: MissingSkill[] }> {
   const enabledAssistants = ASSISTANT_DEFINITIONS.filter(
     (assistant) => options.scope.config.assistants[assistant.id] === "enabled"
@@ -195,6 +204,7 @@ async function applyScopeSkills(options: {
 
   const missingSkills: MissingSkill[] = [];
   let skillsLinked = 0;
+  let rulesLinked = 0;
 
   for (const repository of options.scope.config.repositories) {
     const catalog = options.scope.catalogsByRepository.get(repository.name);
@@ -218,19 +228,25 @@ async function applyScopeSkills(options: {
       }
 
       const sourcePath = join(catalog.sourceSkillBasePath, ...skill.path.split("/"));
+      const linkedDestinations = new Set<string>();
 
       for (const assistant of enabledAssistants) {
-        for (const assistantPath of getAssistantPathsForScope(assistant, options.scope.scope)) {
+        for (const assistantPath of getAssistantSkillPathsForScope(assistant, options.scope.scope)) {
           const destinationBase = isAbsolute(assistantPath)
             ? assistantPath
             : join(options.assistantRoot, assistantPath);
           const destinationPath = join(destinationBase, ...skill.path.split("/"));
-          assertSymlinkPathsDoNotOverlap({
+          const destinationKey = resolve(destinationPath);
+
+          if (linkedDestinations.has(destinationKey)) {
+            continue;
+          }
+
+          linkedDestinations.add(destinationKey);
+          assertLinkPathsDoNotOverlap({
             sourcePath,
             destinationPath,
-            repositoryName: repository.name,
-            skillPath: skill.path,
-            assistantId: assistant.id
+            context: `skill \`${skill.path}\` from repository \`${repository.name}\` to assistant \`${assistant.id}\``
           });
           await makeSymlink(sourcePath, destinationPath);
           skillsLinked += 1;
@@ -239,11 +255,47 @@ async function applyScopeSkills(options: {
     }
   }
 
+  const rulesSourcePath = resolveRulesSourcePath(options.scope.config.rulesPath, options.contextRoot);
+
+  if (
+    options.scope.scope === "project" &&
+    isDefaultRulesPath(options.scope.config.rulesPath) &&
+    !(await pathExists(rulesSourcePath))
+  ) {
+    await ensureDirectory(dirname(rulesSourcePath));
+    await writeFile(rulesSourcePath, "", "utf8");
+  }
+
+  if (await pathExists(rulesSourcePath)) {
+    const linkedRuleDestinations = new Set<string>();
+
+    for (const assistant of enabledAssistants) {
+      for (const rulePath of getAssistantRulePathsForScope(assistant, options.scope.scope)) {
+        const destinationPath = isAbsolute(rulePath) ? rulePath : join(options.assistantRoot, rulePath);
+        const destinationKey = resolve(destinationPath);
+
+        if (linkedRuleDestinations.has(destinationKey)) {
+          continue;
+        }
+
+        linkedRuleDestinations.add(destinationKey);
+        assertLinkPathsDoNotOverlap({
+          sourcePath: rulesSourcePath,
+          destinationPath,
+          context: `rules to assistant \`${assistant.id}\``
+        });
+        await makeSymlink(rulesSourcePath, destinationPath, { type: "file" });
+        rulesLinked += 1;
+      }
+    }
+  }
+
   return {
     result: {
       scope: options.scope.scope,
       repositoriesSynced: options.scope.config.repositories.length,
-      skillsLinked
+      skillsLinked,
+      rulesLinked
     },
     missingSkills
   };
@@ -466,22 +518,29 @@ function toConfigPath(path: string): string {
   return path.split("\\").join("/");
 }
 
-function assertSymlinkPathsDoNotOverlap(options: {
+function assertLinkPathsDoNotOverlap(options: {
   sourcePath: string;
   destinationPath: string;
-  repositoryName: string;
-  skillPath: string;
-  assistantId: string;
+  context: string;
 }): void {
   const source = resolve(options.sourcePath);
   const destination = resolve(options.destinationPath);
 
   if (source === destination || isDescendantPath(source, destination) || isDescendantPath(destination, source)) {
-    throw new CliError(
-      `Cannot link skill \`${options.skillPath}\` from repository \`${options.repositoryName}\` to assistant ` +
-        `\`${options.assistantId}\` because source and destination paths overlap: ${source} <-> ${destination}`
-    );
+    throw new CliError(`Cannot link ${options.context} because source and destination paths overlap: ${source} <-> ${destination}`);
   }
+}
+
+function resolveRulesSourcePath(rulesPath: string | undefined, contextRoot: string): string {
+  const configuredPath = rulesPath?.trim();
+  const effectivePath = configuredPath && configuredPath.length > 0 ? configuredPath : DEFAULT_RULES_PATH;
+
+  return isAbsolute(effectivePath) ? effectivePath : resolve(contextRoot, effectivePath);
+}
+
+function isDefaultRulesPath(rulesPath: string | undefined): boolean {
+  const configuredPath = rulesPath?.trim();
+  return !configuredPath || configuredPath.length === 0 || configuredPath === DEFAULT_RULES_PATH;
 }
 
 function isDescendantPath(path: string, candidateAncestor: string): boolean {

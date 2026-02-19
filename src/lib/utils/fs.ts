@@ -49,14 +49,21 @@ export async function upsertLines(filePath: string, lines: readonly string[]): P
   await writeFile(filePath, `${existing}${insertion}`, "utf8");
 }
 
-export async function makeSymlink(targetPath: string, linkPath: string): Promise<void> {
+export async function makeSymlink(
+  targetPath: string,
+  linkPath: string,
+  options?: {
+    type?: "file" | "dir";
+  }
+): Promise<void> {
   await ensureDirectory(dirname(linkPath));
 
   if (await pathExists(linkPath)) {
     await rm(linkPath, { recursive: true, force: true });
   }
 
-  const symlinkType = process.platform === "win32" ? "junction" : "dir";
+  const requestedType = options?.type ?? "dir";
+  const symlinkType = process.platform === "win32" ? (requestedType === "dir" ? "junction" : "file") : requestedType;
   const normalizedTarget = process.platform === "win32" ? resolve(targetPath) : targetPath;
 
   await symlink(normalizedTarget, linkPath, symlinkType);

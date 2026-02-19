@@ -45,10 +45,14 @@ test("initConfig creates project and global files and registers project", async 
   expect(gitignoreLines.has(".skiui/repos")).toBe(true);
   expect(gitignoreLines.has(".skiui/skiui.local.json")).toBe(true);
   expect(gitignoreLines.has(".claude/skills")).toBe(true);
+  expect(gitignoreLines.has(".codex/skills")).toBe(true);
   expect(gitignoreLines.has(".opencode/skills")).toBe(true);
-  expect(gitignoreLines.has(".cursor/rules")).toBe(true);
-  expect(gitignoreLines.has(".github/instructions")).toBe(true);
+  expect(gitignoreLines.has(".cursor/skills")).toBe(true);
+  expect(gitignoreLines.has(".roo/skills")).toBe(true);
   expect(gitignoreLines.has(".claude")).toBe(false);
+
+  const rulesContents = await readFile(join(projectDir, ".skiui", "AGENTS.md"), "utf8");
+  expect(rulesContents).toBe("");
 
   await initConfig({
     initGlobal: false,

@@ -21,6 +21,7 @@ test("cli init defaults to project scope", async () => {
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("Initialized project and global configuration");
   expect(await fileExists(join(projectDir, ".skiui", "skiui.json"))).toBe(true);
+  expect(await fileExists(join(projectDir, ".skiui", "AGENTS.md"))).toBe(true);
   expect(await fileExists(join(globalDir, "skiui.json"))).toBe(true);
 });
 

@@ -5,8 +5,9 @@ import { CONFIG_VERSION, type SkiuiConfig } from "./types";
 const globalConfig: SkiuiConfig = {
   version: CONFIG_VERSION,
   cachePath: "/global/repos",
+  rulesPath: "global-rules.md",
   assistants: {
-    "claude-code": "enabled",
+    claude: "enabled",
     opencode: "enabled",
     copilot: "disabled"
   },
@@ -34,6 +35,7 @@ test("mergeConfigLayers applies local > project > global precedence", () => {
   const projectConfig: SkiuiConfig = {
     version: CONFIG_VERSION,
     cachePath: ".skiui/repos",
+    rulesPath: ".skiui/project-rules.md",
     assistants: {
       opencode: "disabled"
     },
@@ -59,6 +61,7 @@ test("mergeConfigLayers applies local > project > global precedence", () => {
   const localConfig: SkiuiConfig = {
     version: CONFIG_VERSION,
     cachePath: ".skiui/local-repos",
+    rulesPath: ".skiui/local-rules.md",
     assistants: {
       copilot: "enabled"
     },
@@ -77,6 +80,7 @@ test("mergeConfigLayers applies local > project > global precedence", () => {
   const merged = mergeConfigLayers(globalConfig, projectConfig, localConfig);
 
   expect(merged.cachePath).toBe(".skiui/local-repos");
+  expect(merged.rulesPath).toBe(".skiui/local-rules.md");
   expect(merged.assistants.opencode).toBe("disabled");
   expect(merged.assistants.copilot).toBe("enabled");
 

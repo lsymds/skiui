@@ -9,6 +9,7 @@ export function mergeConfigLayers(
   const effectiveLocal = localConfig ?? null;
 
   const cachePath = effectiveLocal?.cachePath ?? effectiveProject?.cachePath ?? globalConfig.cachePath;
+  const rulesPath = effectiveLocal?.rulesPath ?? effectiveProject?.rulesPath ?? globalConfig.rulesPath;
   const assistants = {
     ...globalConfig.assistants,
     ...(effectiveProject?.assistants ?? {}),
@@ -24,6 +25,7 @@ export function mergeConfigLayers(
   return {
     version: CONFIG_VERSION,
     cachePath,
+    rulesPath,
     assistants,
     repositories,
     projects: globalConfig.projects ?? []

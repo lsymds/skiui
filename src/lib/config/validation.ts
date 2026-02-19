@@ -48,6 +48,7 @@ const projectRecordSchema = z.object({
 const skiuiConfigSchema = z.object({
   version: z.literal(CONFIG_VERSION),
   cachePath: z.string().min(1),
+  rulesPath: z.string().min(1).optional(),
   assistants: z.record(z.string(), assistantStatusSchema),
   repositories: z.array(repositorySchema),
   projects: z.array(projectRecordSchema).optional()

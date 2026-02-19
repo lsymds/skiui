@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { writeFile } from "node:fs/promises";
 import { createDefaultGlobalConfig, createDefaultProjectConfig } from "./defaults";
 import { mergeConfigLayers } from "./merge";
 import { resolveConfigPaths } from "./paths";
@@ -6,7 +7,7 @@ import { loadConfigFile, writeConfigFile } from "./store";
 import type { SkiuiConfig } from "./types";
 import { getAssistantSkillPaths } from "../assistants/registry";
 import { CliError } from "../utils/errors";
-import { ensureDirectory, upsertLines } from "../utils/fs";
+import { ensureDirectory, pathExists, upsertLines } from "../utils/fs";
 
 const PROJECT_GITIGNORE_LINES = [".skiui/repos", ".skiui/skiui.local.json", ...getAssistantSkillPaths("project")];
 
@@ -51,6 +52,11 @@ export async function initConfig(options: InitConfigOptions): Promise<InitConfig
   if (options.initProject) {
     await ensureDirectory(paths.projectDir);
     await ensureDirectory(paths.projectLocalSkillsDir);
+
+    const projectRulesFile = resolve(paths.projectDir, "AGENTS.md");
+    if (!(await pathExists(projectRulesFile))) {
+      await writeFile(projectRulesFile, "", "utf8");
+    }
 
     const existingProjectConfig = await loadConfigFile(paths.projectConfigFile);
     const projectConfig = existingProjectConfig ?? createDefaultProjectConfig();

@@ -33,13 +33,14 @@ test("cli apply links enabled project skills and reports missing skills", async 
   const projectConfig = JSON.parse(await readFile(projectConfigPath, "utf8")) as {
     assistants: Record<string, string>;
   };
-  projectConfig.assistants["claude-code"] = "enabled";
+  projectConfig.assistants.claude = "enabled";
   await writeFile(projectConfigPath, `${JSON.stringify(projectConfig, null, 2)}\n`, "utf8");
 
   const applyResult = await runCli(["apply"], { cwd: projectDir, env });
   expect(applyResult.exitCode).toBe(0);
   expect(applyResult.stdout).toContain("Applied project scope");
   expect(await fileExists(join(projectDir, ".claude", "skills", "my-skill"))).toBe(true);
+  expect(await fileExists(join(projectDir, "CLAUDE.md"))).toBe(true);
 
   const addMissingSkillResult = await runCli(["enable-skill", "local", "missing-skill"], { cwd: projectDir, env });
   expect(addMissingSkillResult.exitCode).toBe(0);
