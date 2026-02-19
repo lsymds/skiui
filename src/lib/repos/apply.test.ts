@@ -178,12 +178,14 @@ test("applyConfiguredSkills applies global scope to HOME and project scope to cw
   });
 
   await setAssistantState(join(harness.globalDir, "skiui.json"), "claude-code", "enabled");
+  await setAssistantState(join(harness.globalDir, "skiui.json"), "opencode", "enabled");
   await setAssistantState(join(harness.projectDir, ".skiui", "skiui.json"), "claude-code", "enabled");
 
   const result = await applyConfiguredSkills({ cwd: harness.projectDir, env: harness.env });
 
   expect(result.missingSkills).toHaveLength(0);
   expect(await pathExists(join(harness.homeDir, ".claude", "skills", "global-skill"))).toBe(true);
+  expect(await pathExists(join(harness.homeDir, ".config", "opencode", "skills", "global-skill"))).toBe(true);
   expect(await pathExists(join(harness.projectDir, ".claude", "skills", "project-skill"))).toBe(true);
 });
 

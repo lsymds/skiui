@@ -66,3 +66,68 @@ test("syncRepositoryToCache rejects overlapping source and cache paths", async (
     })
   ).rejects.toThrow("identical source and cache paths");
 });
+
+test("syncRepositoryToCache updates existing git cache with pull", async () => {
+  const workspace = await tempPaths.createTempPath("skiui-sync-");
+  const sourcePath = join(workspace, "source-repo");
+  const cachePath = join(workspace, "cache", "repo");
+
+  await mkdir(join(sourcePath, "skills", "skill-a"), { recursive: true });
+  await Bun.write(join(sourcePath, "skills", "skill-a", "SKILL.md"), "# Skill A\n\nDescription A\n");
+
+  await runGit(["init"], sourcePath);
+  await runGit(["config", "user.name", "skiui-test"], sourcePath);
+  await runGit(["config", "user.email", "skiui@example.com"], sourcePath);
+  await runGit(["add", "."], sourcePath);
+  await runGit(["commit", "-m", "initial"], sourcePath);
+
+  const repository: RepositoryConfig = {
+    name: "repo",
+    source: {
+      type: "git",
+      url: sourcePath
+    },
+    skills: []
+  };
+
+  await syncRepositoryToCache({
+    repository,
+    contextRoot: workspace,
+    cacheRepositoryPath: cachePath
+  });
+
+  await Bun.write(join(cachePath, "marker.txt"), "keep-me");
+
+  await mkdir(join(sourcePath, "skills", "skill-b"), { recursive: true });
+  await Bun.write(join(sourcePath, "skills", "skill-b", "SKILL.md"), "# Skill B\n\nDescription B\n");
+  await runGit(["add", "."], sourcePath);
+  await runGit(["commit", "-m", "add-skill-b"], sourcePath);
+
+  await syncRepositoryToCache({
+    repository,
+    contextRoot: workspace,
+    cacheRepositoryPath: cachePath
+  });
+
+  expect(await pathExists(join(cachePath, "skills", "skill-b", "SKILL.md"))).toBe(true);
+  expect(await pathExists(join(cachePath, "marker.txt"))).toBe(true);
+});
+
+async function runGit(args: string[], cwd: string): Promise<void> {
+  const processHandle = Bun.spawn({
+    cmd: ["git", ...args],
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe"
+  });
+
+  const [exitCode, stdout, stderr] = await Promise.all([
+    processHandle.exited,
+    new Response(processHandle.stdout).text(),
+    new Response(processHandle.stderr).text()
+  ]);
+
+  if (exitCode !== 0) {
+    throw new Error(`git ${args.join(" ")} failed: ${stdout}\n${stderr}`);
+  }
+}

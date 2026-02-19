@@ -154,6 +154,57 @@ test("addSkill does not duplicate repository when git URL formatting differs", a
   expect(agentSkillRepos[0]?.skills.map((skill) => skill.path).sort()).toEqual(["first-skill", "second-skill"]);
 });
 
+test("addSkill does not duplicate repository when fs path formatting differs", async () => {
+  const projectDir = await tempPaths.createTempPath("skiui-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-global-");
+  const env = createSkiuiTestEnv({ globalDir });
+
+  await initConfig({
+    initGlobal: false,
+    initProject: true,
+    cwd: projectDir,
+    env
+  });
+
+  const firstResult = await addSkill({
+    sourceType: "fs",
+    sourcePath: ".skiui/local/",
+    skillName: "first-fs-skill",
+    global: false,
+    cwd: projectDir,
+    env
+  });
+
+  const secondResult = await addSkill({
+    sourceType: "fs",
+    sourcePath: ".skiui\\local",
+    skillName: "second-fs-skill",
+    global: false,
+    cwd: projectDir,
+    env
+  });
+
+  expect(firstResult.repositoryAdded).toBe(false);
+  expect(firstResult.skillAdded).toBe(true);
+  expect(secondResult.repositoryAdded).toBe(false);
+  expect(secondResult.skillAdded).toBe(true);
+
+  const projectConfig = JSON.parse(await readFile(join(projectDir, ".skiui", "skiui.json"), "utf8")) as {
+    repositories: Array<{
+      name: string;
+      source: { type: string; path?: string };
+      skills: Array<{ path: string }>;
+    }>;
+  };
+
+  const localRepos = projectConfig.repositories.filter(
+    (repository) => repository.source.type === "fs" && repository.source.path === ".skiui/local"
+  );
+
+  expect(localRepos).toHaveLength(1);
+  expect(localRepos[0]?.skills.map((skill) => skill.path).sort()).toEqual(["first-fs-skill", "second-fs-skill"]);
+});
+
 test("listEnabledSkills includes scope for enabled entries", async () => {
   const projectDir = await tempPaths.createTempPath("skiui-project-");
   const globalDir = await tempPaths.createTempPath("skiui-global-");

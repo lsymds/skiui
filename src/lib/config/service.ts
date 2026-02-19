@@ -8,7 +8,7 @@ import { getAssistantSkillPaths } from "../assistants/registry";
 import { CliError } from "../utils/errors";
 import { ensureDirectory, upsertLines } from "../utils/fs";
 
-const PROJECT_GITIGNORE_LINES = [".skiui/repos", ".skiui/skiui.local.json", ...getAssistantSkillPaths()];
+const PROJECT_GITIGNORE_LINES = [".skiui/repos", ".skiui/skiui.local.json", ...getAssistantSkillPaths("project")];
 
 export type InitConfigOptions = {
   initGlobal: boolean;

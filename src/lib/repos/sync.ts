@@ -34,24 +34,55 @@ async function syncGitRepositoryToCache(options: {
     throw new CliError("Internal error: expected git repository source");
   }
 
-  await ensureDirectory(dirname(cacheRepositoryPath));
-  await rm(cacheRepositoryPath, { recursive: true, force: true });
-
   const repositoryUrl = resolveGitSource(repository.source.url, contextRoot);
-  const cloneArgs = ["clone", "--depth", "1"];
+  await ensureDirectory(dirname(cacheRepositoryPath));
 
-  if (repository.source.branch) {
-    cloneArgs.push("--branch", repository.source.branch);
+  const existingCache = await pathExists(cacheRepositoryPath);
+  if (existingCache && (await pathExists(join(cacheRepositoryPath, ".git")))) {
+    const originUrl = await readGitOriginUrl(cacheRepositoryPath);
+    if (originUrl && normalizeGitUrl(originUrl) === normalizeGitUrl(repositoryUrl)) {
+      const pullArgs = repository.source.branch
+        ? ["pull", "--ff-only", "origin", repository.source.branch]
+        : ["pull", "--ff-only"];
+
+      const pulled = await runGitSafely(
+        pullArgs,
+        cacheRepositoryPath,
+        `Failed to update repository \`${repository.name}\` with pull`
+      );
+
+      if (!pulled) {
+        await recloneGitRepository(repository, repositoryUrl, contextRoot, cacheRepositoryPath);
+      }
+    } else {
+      await recloneGitRepository(repository, repositoryUrl, contextRoot, cacheRepositoryPath);
+    }
+  } else {
+    await recloneGitRepository(repository, repositoryUrl, contextRoot, cacheRepositoryPath);
   }
-
-  cloneArgs.push(repositoryUrl, cacheRepositoryPath);
-
-  await runGit(cloneArgs, contextRoot, `Failed to clone repository \`${repository.name}\``);
 
   return {
     cacheRepositoryPath,
     skillRootPath: join(cacheRepositoryPath, repository.source.path ?? "skills")
   };
+}
+
+async function recloneGitRepository(
+  repository: RepositoryConfig,
+  repositoryUrl: string,
+  contextRoot: string,
+  cacheRepositoryPath: string
+): Promise<void> {
+  await rm(cacheRepositoryPath, { recursive: true, force: true });
+
+  const cloneArgs = ["clone", "--depth", "1"];
+
+  if (repository.source.type === "git" && repository.source.branch) {
+    cloneArgs.push("--branch", repository.source.branch);
+  }
+
+  cloneArgs.push(repositoryUrl, cacheRepositoryPath);
+  await runGit(cloneArgs, contextRoot, `Failed to clone repository \`${repository.name}\``);
 }
 
 async function syncFsRepositoryToCache(options: {
@@ -112,6 +143,36 @@ async function runGit(args: string[], cwd: string, errorPrefix: string): Promise
   }
 }
 
+async function runGitSafely(args: string[], cwd: string, errorPrefix: string): Promise<boolean> {
+  try {
+    await runGit(args, cwd, errorPrefix);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readGitOriginUrl(repositoryPath: string): Promise<string | null> {
+  const processHandle = Bun.spawn({
+    cmd: ["git", "config", "--get", "remote.origin.url"],
+    cwd: repositoryPath,
+    stdout: "pipe",
+    stderr: "pipe"
+  });
+
+  const [exitCode, stdout] = await Promise.all([
+    processHandle.exited,
+    new Response(processHandle.stdout).text()
+  ]);
+
+  if (exitCode !== 0) {
+    return null;
+  }
+
+  const trimmed = stdout.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function resolveGitSource(sourceUrl: string, contextRoot: string): string {
   const trimmed = sourceUrl.trim();
 
@@ -124,6 +185,10 @@ function resolveGitSource(sourceUrl: string, contextRoot: string): string {
   }
 
   return resolve(contextRoot, trimmed);
+}
+
+function normalizeGitUrl(url: string): string {
+  return url.trim().replace(/\/+$/, "").replace(/\.git$/i, "");
 }
 
 function assertPathsDoNotOverlap(sourcePath: string, cachePath: string, repositoryName: string): void {

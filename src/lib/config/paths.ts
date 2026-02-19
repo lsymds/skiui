@@ -18,17 +18,7 @@ export function resolveGlobalConfigDir(env: NodeJS.ProcessEnv = process.env): st
     return resolve(override);
   }
 
-  if (process.platform === "win32") {
-    return join(homedir(), "AppData", "Roaming", "skiui");
-  }
-
-  if (process.platform === "darwin") {
-    return join(homedir(), "Library", "Application Support", "skiui");
-  }
-
-  const xdgConfigHome = env.XDG_CONFIG_HOME?.trim();
-  const baseConfigDir = xdgConfigHome && xdgConfigHome.length > 0 ? xdgConfigHome : join(homedir(), ".config");
-  return join(baseConfigDir, "skiui");
+  return join(homedir(), ".config", "skiui");
 }
 
 export function resolveConfigPaths(options?: {

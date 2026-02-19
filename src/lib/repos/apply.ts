@@ -5,7 +5,7 @@ import { mergeConfigLayers } from "../config/merge";
 import { resolveConfigPaths } from "../config/paths";
 import { loadConfigFile, writeConfigFile } from "../config/store";
 import { CONFIG_VERSION, type RepositoryConfig, type SkiuiConfig, type SkillConfig } from "../config/types";
-import { ASSISTANT_DEFINITIONS } from "../assistants/registry";
+import { ASSISTANT_DEFINITIONS, getAssistantPathsForScope, getAssistantSkillPaths } from "../assistants/registry";
 import { CliError } from "../utils/errors";
 import { ensureDirectory, makeSymlink, pathExists, upsertLines } from "../utils/fs";
 import { syncRepositoryToCache } from "./sync";
@@ -44,7 +44,7 @@ type ScopeCatalog = {
 const PROJECT_GITIGNORE_LINES = [
   ".skiui/repos",
   ".skiui/skiui.local.json",
-  ...new Set(ASSISTANT_DEFINITIONS.flatMap((assistant) => assistant.skillPaths))
+  ...getAssistantSkillPaths("project")
 ];
 
 export async function applyConfiguredSkills(options?: {
@@ -220,8 +220,11 @@ async function applyScopeSkills(options: {
       const sourcePath = join(catalog.sourceSkillBasePath, ...skill.path.split("/"));
 
       for (const assistant of enabledAssistants) {
-        for (const assistantPath of assistant.skillPaths) {
-          const destinationPath = join(options.assistantRoot, assistantPath, ...skill.path.split("/"));
+        for (const assistantPath of getAssistantPathsForScope(assistant, options.scope.scope)) {
+          const destinationBase = isAbsolute(assistantPath)
+            ? assistantPath
+            : join(options.assistantRoot, assistantPath);
+          const destinationPath = join(destinationBase, ...skill.path.split("/"));
           await makeSymlink(sourcePath, destinationPath);
           skillsLinked += 1;
         }
