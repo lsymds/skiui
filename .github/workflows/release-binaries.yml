@@ -1,0 +1,116 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: x64
+            target: bun-linux-x64
+            archive: tar.gz
+            binary_ext: ""
+          - os: linux
+            arch: arm64
+            target: bun-linux-arm64
+            archive: tar.gz
+            binary_ext: ""
+          - os: darwin
+            arch: x64
+            target: bun-darwin-x64
+            archive: tar.gz
+            binary_ext: ""
+          - os: darwin
+            arch: arm64
+            target: bun-darwin-arm64
+            archive: tar.gz
+            binary_ext: ""
+          - os: windows
+            arch: x64
+            target: bun-windows-x64
+            archive: zip
+            binary_ext: .exe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build and package binary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${GITHUB_REF_NAME}"
+          base_name="skiui-${version}-${{ matrix.os }}-${{ matrix.arch }}"
+          binary_name="skiui${{ matrix.binary_ext }}"
+
+          mkdir -p dist
+
+          bun build src/apps/cli/index.ts \
+            --compile \
+            --target="${{ matrix.target }}" \
+            --outfile="dist/${binary_name}"
+
+          if [[ "${{ matrix.archive }}" == "zip" ]]; then
+            (cd dist && zip -q "${base_name}.zip" "${binary_name}")
+            asset_name="${base_name}.zip"
+          else
+            (cd dist && tar -czf "${base_name}.tar.gz" "${binary_name}")
+            asset_name="${base_name}.tar.gz"
+          fi
+
+          (cd dist && sha256sum "${asset_name}" > "${asset_name}.sha256")
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            dist/skiui-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.arch }}.*
+          if-no-files-found: error
+
+  publish:
+    name: Publish release assets
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Build combined checksum file
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd release-assets && cat *.sha256 > checksums.txt)
+
+      - name: Upload assets to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/*
