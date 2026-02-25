@@ -18,7 +18,7 @@ export function createDefaultProjectConfig(): SkiuiConfig {
     version: CONFIG_VERSION,
     cachePath: ".skiui/repos",
     rulesPath: DEFAULT_RULES_PATH,
-    assistants: createDefaultAssistantsConfig(),
+    assistants: {},
     repositories: [
       {
         name: "local",
