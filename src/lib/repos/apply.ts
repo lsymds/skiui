@@ -125,7 +125,6 @@ async function syncConfigScope(options: {
   configPath: string;
   contextRoot: string;
 }): Promise<ScopeCatalog> {
-  const now = new Date().toISOString();
   const cacheRoot = isAbsolute(options.config.cachePath)
     ? options.config.cachePath
     : resolve(options.contextRoot, options.config.cachePath);
@@ -149,10 +148,9 @@ async function syncConfigScope(options: {
     const mergedSkills = mergeRepositorySkills(repository.skills, discoveredByPath);
 
     const updatedRepository: RepositoryConfig = {
-      ...repository,
-      skills: mergedSkills,
-      lastFetched: now,
-      lastRefreshed: now
+      name: repository.name,
+      source: repository.source,
+      skills: mergedSkills
     };
 
     updatedRepositories.push(updatedRepository);

@@ -120,14 +120,13 @@ test("applyConfigured clones vercel git repository and extracts frontmatter desc
   const projectConfig = await readJson<{
     repositories: Array<{
       name: string;
-      lastFetched?: string;
       skills: Array<{ path: string; name: string; description?: string; enabled: boolean }>;
     }>;
   }>(join(harness.projectDir, ".skiui", "skiui.json"));
   const repository = projectConfig.repositories.find((entry) => entry.name === "agent-skills");
   const skill = repository?.skills.find((entry) => entry.path === "web-design-guidelines");
 
-  expect(repository?.lastFetched).toBeDefined();
+  expect("lastFetched" in (repository ?? {})).toBe(false);
   expect(skill?.enabled).toBe(true);
   expect(skill?.description).toContain("Review UI code for Web Interface Guidelines compliance");
   expect(skill?.description).not.toBe("---");
