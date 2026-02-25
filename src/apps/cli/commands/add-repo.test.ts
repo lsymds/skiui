@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   createSkiuiTestEnv,
@@ -13,7 +13,7 @@ afterEach(async () => {
   await tempPaths.cleanup();
 });
 
-test("cli add-repo allows explicit repository name", async () => {
+test("cli repo add allows explicit repository name", async () => {
   const projectDir = await tempPaths.createTempPath("skiui-cli-project-");
   const globalDir = await tempPaths.createTempPath("skiui-cli-global-");
   const env = createSkiuiTestEnv({ globalDir });
@@ -30,7 +30,7 @@ test("cli add-repo allows explicit repository name", async () => {
   );
 
   const addRepoResult = await runCli(
-    ["add-repo", ".skiui/external-skills", "--name", "external"],
+    ["repo", "add", ".skiui/external-skills", "--name", "external"],
     {
       cwd: projectDir,
       env,
@@ -46,7 +46,7 @@ test("cli add-repo allows explicit repository name", async () => {
   ).toBe(true);
 
   const addSkillResult = await runCli(
-    ["enable-skill", "external", "my-skill"],
+    ["skill", "enable", "external", "my-skill"],
     { cwd: projectDir, env },
   );
 
@@ -73,7 +73,7 @@ test("cli add-repo allows explicit repository name", async () => {
   ).toBe(true);
 });
 
-test("cli add-repo rejects invalid explicit repository name", async () => {
+test("cli repo add rejects invalid explicit repository name", async () => {
   const projectDir = await tempPaths.createTempPath("skiui-cli-project-");
   const globalDir = await tempPaths.createTempPath("skiui-cli-global-");
   const env = createSkiuiTestEnv({ globalDir });
@@ -82,11 +82,43 @@ test("cli add-repo rejects invalid explicit repository name", async () => {
   expect(initResult.exitCode).toBe(0);
 
   const addRepoResult = await runCli(
-    ["add-repo", ".skiui/local", "--name", "Invalid Name"],
+    ["repo", "add", ".skiui/local", "--name", "Invalid Name"],
     { cwd: projectDir, env },
   );
   expect(addRepoResult.exitCode).toBe(1);
   expect(addRepoResult.stderr).toContain(
     "Repository name must contain only lowercase letters",
   );
+});
+
+test("cli repo add can write to local scope", async () => {
+  const projectDir = await tempPaths.createTempPath("skiui-cli-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-cli-global-");
+  const env = createSkiuiTestEnv({ globalDir });
+
+  const initResult = await runCli(["init"], { cwd: projectDir, env });
+  expect(initResult.exitCode).toBe(0);
+
+  const sourceRoot = join(projectDir, ".skiui", "external-local");
+  await mkdir(sourceRoot, { recursive: true });
+
+  const addRepoResult = await runCli(
+    ["repo", "add", ".skiui/external-local", "--name", "external-local", "--scope", "local"],
+    { cwd: projectDir, env },
+  );
+  expect(addRepoResult.exitCode).toBe(0);
+  expect(addRepoResult.stdout).toContain("Updated local config");
+
+  const localConfig = JSON.parse(
+    await readFile(join(projectDir, ".skiui", "skiui.local.json"), "utf8"),
+  ) as { repositories: Array<{ name: string; source: { type: string; path?: string } }> };
+
+  expect(
+    localConfig.repositories.some(
+      (repository) =>
+        repository.name === "external-local" &&
+        repository.source.type === "fs" &&
+        repository.source.path === ".skiui/external-local",
+    ),
+  ).toBe(true);
 });
