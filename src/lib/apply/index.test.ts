@@ -224,6 +224,36 @@ test("applyConfigured applies global scope to HOME and project scope to cwd", as
   expect(await pathExists(join(harness.projectDir, ".claude", "skills", "project-skill"))).toBe(true);
 });
 
+test("applyConfigured project scope inherits enabled assistants from global config", async () => {
+  const harness = await setupProjectHarness();
+
+  await mkdir(join(harness.projectDir, ".skiui", "local", "project-skill"), { recursive: true });
+  await Bun.write(
+    join(harness.projectDir, ".skiui", "local", "project-skill", "SKILL.md"),
+    "# Project Skill\n\nProject description.\n"
+  );
+
+  await addSkill({
+    sourceType: "fs",
+    sourcePath: ".skiui/local",
+    skillName: "project-skill",
+    global: false,
+    cwd: harness.projectDir,
+    env: harness.env
+  });
+
+  await setAssistantState(join(harness.globalDir, "skiui.json"), "claude", "enabled");
+
+  const result = await applyConfigured({ cwd: harness.projectDir, env: harness.env });
+
+  expect(result.missingSkills).toHaveLength(0);
+  expect(result.scopes.some((scope) => scope.scope === "project" && scope.skillsLinked > 0)).toBe(true);
+  expect(result.scopes.some((scope) => scope.scope === "project" && scope.rulesLinked > 0)).toBe(true);
+  expect(await pathExists(join(harness.projectDir, ".claude", "skills", "project-skill"))).toBe(true);
+  expect(await pathExists(join(harness.projectDir, "CLAUDE.md"))).toBe(true);
+  expect(await isSymlink(join(harness.projectDir, "CLAUDE.md"))).toBe(true);
+});
+
 test("applyConfigured links rules to enabled assistants", async () => {
   const harness = await setupProjectHarness();
 

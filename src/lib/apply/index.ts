@@ -2,7 +2,7 @@ import { homedir } from "node:os";
 import { dirname } from "node:path";
 import { loadConfigLayers } from "../config/layers";
 import { mergeConfigLayers } from "../config/merge";
-import { CONFIG_VERSION, type SkiuiConfig } from "../config/types";
+import { CONFIG_VERSION, type AssistantStatus, type SkiuiConfig } from "../config/types";
 import { applyConfiguredSkills, type ApplyResult } from "../repos/apply";
 import { applyRulesForScope } from "../rules/apply";
 import { CliError } from "../utils/errors";
@@ -35,9 +35,11 @@ export async function applyConfigured(options?: {
   );
 
   if (layers.project.config) {
-    const projectConfig = layers.local.config
-      ? mergeProjectLocalForRules(layers.project.config, layers.local.config)
-      : layers.project.config;
+    const projectConfig = mergeProjectLocalForRules(
+      layers.project.config,
+      layers.local.config,
+      layers.global.config.assistants
+    );
 
     rulesLinkedByScope.set(
       "project",
@@ -59,12 +61,16 @@ export async function applyConfigured(options?: {
   };
 }
 
-function mergeProjectLocalForRules(projectConfig: SkiuiConfig, localConfig: SkiuiConfig): SkiuiConfig {
+function mergeProjectLocalForRules(
+  projectConfig: SkiuiConfig,
+  localConfig: SkiuiConfig | null,
+  globalAssistants: Record<string, AssistantStatus>
+): SkiuiConfig {
   return mergeConfigLayers(
     {
       version: CONFIG_VERSION,
       cachePath: projectConfig.cachePath,
-      assistants: {},
+      assistants: globalAssistants,
       repositories: [],
       projects: []
     },

@@ -4,7 +4,7 @@ import { loadConfigLayers } from "../config/layers";
 import { mergeConfigLayers } from "../config/merge";
 import { PROJECT_GITIGNORE_LINES } from "../config/paths";
 import { writeConfigFile } from "../config/store";
-import { CONFIG_VERSION, type RepositoryConfig, type SkiuiConfig, type SkillConfig } from "../config/types";
+import { CONFIG_VERSION, type AssistantStatus, type RepositoryConfig, type SkiuiConfig, type SkillConfig } from "../config/types";
 import { ASSISTANT_DEFINITIONS, getAssistantSkillPathsForScope } from "../assistants/registry";
 import { CliError } from "../utils/errors";
 import { ensureDirectory, makeSymlink, upsertLines } from "../utils/fs";
@@ -83,7 +83,7 @@ export async function applyConfiguredSkills(options?: {
       contextRoot: cwd
     });
 
-    let projectEffectiveConfig = projectScope.config;
+    let localScopeConfig: SkiuiConfig | null = null;
     let projectCatalogs = projectScope.catalogsByRepository;
 
     if (layers.local.config) {
@@ -94,9 +94,15 @@ export async function applyConfiguredSkills(options?: {
         contextRoot: cwd
       });
 
-      projectEffectiveConfig = mergeProjectLocal(projectScope.config, localScope.config);
+      localScopeConfig = localScope.config;
       projectCatalogs = mergeCatalogMaps(projectScope.catalogsByRepository, localScope.catalogsByRepository);
     }
+
+    const projectEffectiveConfig = mergeProjectLocal(
+      projectScope.config,
+      localScopeConfig,
+      layers.global.config.assistants
+    );
 
     const projectApply = await applyScopeSkills({
       scope: {
@@ -282,12 +288,16 @@ function mergeRepositorySkills(
   return merged;
 }
 
-function mergeProjectLocal(projectConfig: SkiuiConfig, localConfig: SkiuiConfig): SkiuiConfig {
+function mergeProjectLocal(
+  projectConfig: SkiuiConfig,
+  localConfig: SkiuiConfig | null,
+  globalAssistants: Record<string, AssistantStatus>
+): SkiuiConfig {
   return mergeConfigLayers(
     {
       version: CONFIG_VERSION,
       cachePath: projectConfig.cachePath,
-      assistants: {},
+      assistants: globalAssistants,
       repositories: [],
       projects: []
     },
