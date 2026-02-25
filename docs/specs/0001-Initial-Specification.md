@@ -14,12 +14,10 @@ The primary entry point into this library should be through the use of an extens
 
 The following commands should be created:
 
-- `skiui init --project/--global` - Initialises the required skiui folders and files with default configurations.
-- `skiui add-repo <repo> [--name <repo-name>]` - Adds a repository source (Git URL or filesystem path) to the configuration file.
-  If `--name` is provided, that repository name is used. If `--global` is specified, the repository will be added to the
-  global configuration file.
-- `skiui enable-skill <repo-name> <skill-name>` - Enables a skill in a configured repository. If `--global` is specified,
-  the skill will be enabled in the global configuration file.
+- `skiui init [--scope <local|project|global>]` - Initialises the required skiui folders and files with default configurations.
+- `skiui repo add <repo> [--name <repo-name>] [--scope <local|project|global>]` - Adds a repository source (Git URL or filesystem path) to the configuration file.
+  If `--name` is provided, that repository name is used.
+- `skiui skill enable <repo-name> <skill-name> [--scope <local|project|global>]` - Enables a skill in a configured repository.
 - `skiui apply` - Fetches enabled repositories and applies symlinks for any enabled skills. If in a skiui enabled project, applies
   at both the project and global level. Else, applies at the global level.
 - `skiui list` - Lists enabled repositories and skills, as well as the scope they're enabled at.
