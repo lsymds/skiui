@@ -49,6 +49,8 @@ test("applyConfigured syncs catalog metadata and links enabled project skills", 
   const gitignoreLines = await readGitignoreLines(harness.projectDir);
   expect(gitignoreLines.has(".claude/skills")).toBe(true);
   expect(gitignoreLines.has(".opencode/skills")).toBe(true);
+  expect(gitignoreLines.has("CLAUDE.md")).toBe(true);
+  expect(gitignoreLines.has(".clinerules")).toBe(true);
   expect(gitignoreLines.has(".claude")).toBe(false);
 
   const projectConfig = await readJson<{ repositories: Array<{ name: string; skills: Array<{ path: string; name: string; description?: string; enabled: boolean }> }> }>(

@@ -49,6 +49,10 @@ test("initConfig creates project and global files and registers project", async 
   expect(gitignoreLines.has(".opencode/skills")).toBe(true);
   expect(gitignoreLines.has(".cursor/skills")).toBe(true);
   expect(gitignoreLines.has(".roo/skills")).toBe(true);
+  expect(gitignoreLines.has("CLAUDE.md")).toBe(true);
+  expect(gitignoreLines.has(".clinerules")).toBe(true);
+  expect(gitignoreLines.has(".aider.conf.yml")).toBe(true);
+  expect(gitignoreLines.has("WARP.md")).toBe(true);
   expect(gitignoreLines.has(".claude")).toBe(false);
 
   const rulesContents = await readFile(join(projectDir, ".skiui", "AGENTS.md"), "utf8");
@@ -83,6 +87,8 @@ test("initConfig only ignores assistant skill paths and not assistant roots", as
   const gitignoreLines = await readGitignoreLines(projectDir);
   expect(gitignoreLines.has(".claude/skills")).toBe(true);
   expect(gitignoreLines.has(".opencode/skills")).toBe(true);
+  expect(gitignoreLines.has("CLAUDE.md")).toBe(true);
+  expect(gitignoreLines.has(".clinerules")).toBe(true);
   expect(gitignoreLines.has(".claude")).toBe(false);
 });
 
