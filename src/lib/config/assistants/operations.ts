@@ -1,15 +1,10 @@
 import { ASSISTANT_DEFINITIONS } from "../../assistants/registry";
 import type { ConfigScope } from "../../projects/types";
 import { CliError } from "../../utils/errors";
-import { type LoadedLayers, loadConfigLayers } from "../layers";
+import { loadConfigLayers } from "../layers";
 import { writeConfigFile } from "../store";
-import { CONFIG_VERSION, type AssistantStatus, type SkiuiConfig } from "../types";
-
-type TargetLayer = {
-  scope: ConfigScope;
-  configPath: string;
-  config: SkiuiConfig;
-};
+import { type AssistantStatus, type SkiuiConfig } from "../types";
+import { selectTargetLayer } from "../target-layer";
 
 export type SetAssistantStatusOptions = {
   assistantId: string;
@@ -80,62 +75,6 @@ export async function setAssistantStatus(options: SetAssistantStatusOptions): Pr
   };
 }
 
-function selectTargetLayer(layers: LoadedLayers, scope: ConfigScope | undefined): TargetLayer {
-  if (scope === "global") {
-    if (!layers.global.config) {
-      throw new CliError("No global skiui configuration found. Run `skiui init --global` first.");
-    }
-
-    return {
-      scope: "global",
-      configPath: layers.global.configPath,
-      config: layers.global.config
-    };
-  }
-
-  if (scope === "project") {
-    if (!layers.project.config) {
-      throw new CliError("No project skiui configuration found. Run `skiui init` first.");
-    }
-
-    return {
-      scope: "project",
-      configPath: layers.project.configPath,
-      config: layers.project.config
-    };
-  }
-
-  if (scope === "local") {
-    if (!layers.project.config) {
-      throw new CliError("No project skiui configuration found. Run `skiui init` first.");
-    }
-
-    return {
-      scope: "local",
-      configPath: layers.local.configPath,
-      config: layers.local.config ?? createDefaultLocalConfig(layers.project.config)
-    };
-  }
-
-  if (layers.project.config) {
-    return {
-      scope: "project",
-      configPath: layers.project.configPath,
-      config: layers.project.config
-    };
-  }
-
-  if (layers.global.config) {
-    return {
-      scope: "global",
-      configPath: layers.global.configPath,
-      config: layers.global.config
-    };
-  }
-
-  throw new CliError("No skiui configuration found. Run `skiui init` first.");
-}
-
 function normalizeAssistantId(assistantId: string): string {
   const normalized = assistantId.trim();
 
@@ -144,13 +83,4 @@ function normalizeAssistantId(assistantId: string): string {
   }
 
   return normalized;
-}
-
-function createDefaultLocalConfig(projectConfig: SkiuiConfig): SkiuiConfig {
-  return {
-    version: CONFIG_VERSION,
-    cachePath: projectConfig.cachePath,
-    assistants: {},
-    repositories: []
-  };
 }

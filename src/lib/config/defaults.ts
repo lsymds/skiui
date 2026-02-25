@@ -31,3 +31,13 @@ export function createDefaultProjectConfig(): SkiuiConfig {
     ]
   };
 }
+
+export function createDefaultLocalConfig(projectConfig: SkiuiConfig): SkiuiConfig {
+  return {
+    version: CONFIG_VERSION,
+    cachePath: projectConfig.cachePath,
+    rulesPath: projectConfig.rulesPath,
+    assistants: {},
+    repositories: []
+  };
+}
