@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { writeFile } from "node:fs/promises";
-import { createDefaultGlobalConfig, createDefaultProjectConfig } from "./defaults";
+import { createDefaultGlobalConfig, createDefaultLocalConfig, createDefaultProjectConfig } from "./defaults";
 import { mergeConfigLayers } from "./merge";
 import { loadConfigLayers } from "./layers";
 import { PROJECT_GITIGNORE_LINES, resolveConfigPaths } from "./paths";
@@ -12,6 +12,7 @@ import { ensureDirectory, pathExists, upsertLines } from "../utils/fs";
 export type InitConfigOptions = {
   initGlobal: boolean;
   initProject: boolean;
+  initLocal?: boolean;
   cwd?: string;
   env?: NodeJS.ProcessEnv;
 };
@@ -19,8 +20,10 @@ export type InitConfigOptions = {
 export type InitConfigResult = {
   globalConfigPath?: string;
   projectConfigPath?: string;
+  localConfigPath?: string;
   globalCreated: boolean;
   projectCreated: boolean;
+  localCreated: boolean;
 };
 
 export type EffectiveConfigResult = {
@@ -39,6 +42,11 @@ export async function initConfig(options: InitConfigOptions): Promise<InitConfig
 
   let globalCreated = false;
   let projectCreated = false;
+  let localCreated = false;
+
+  if (options.initLocal && !options.initProject) {
+    throw new CliError("Local initialization requires project initialization");
+  }
 
   let globalConfig: SkiuiConfig | null = null;
   if (options.initGlobal || options.initProject) {
@@ -64,6 +72,14 @@ export async function initConfig(options: InitConfigOptions): Promise<InitConfig
       projectCreated = true;
     }
 
+    if (options.initLocal) {
+      const existingLocalConfig = await loadConfigFile(paths.localProjectConfigFile);
+      if (!existingLocalConfig) {
+        await writeConfigFile(paths.localProjectConfigFile, createDefaultLocalConfig(projectConfig));
+        localCreated = true;
+      }
+    }
+
     const gitignorePath = resolve(cwd, ".gitignore");
     await upsertLines(gitignorePath, PROJECT_GITIGNORE_LINES);
 
@@ -78,8 +94,10 @@ export async function initConfig(options: InitConfigOptions): Promise<InitConfig
   return {
     globalConfigPath: options.initGlobal || options.initProject ? paths.globalConfigFile : undefined,
     projectConfigPath: options.initProject ? paths.projectConfigFile : undefined,
+    localConfigPath: options.initLocal ? paths.localProjectConfigFile : undefined,
     globalCreated,
-    projectCreated
+    projectCreated,
+    localCreated
   };
 }
 

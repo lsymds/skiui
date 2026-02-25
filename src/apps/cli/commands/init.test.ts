@@ -25,11 +25,11 @@ test("cli init defaults to project scope", async () => {
   expect(await fileExists(join(globalDir, "skiui.json"))).toBe(true);
 });
 
-test("cli init --global only creates global configuration", async () => {
+test("cli init --scope global only creates global configuration", async () => {
   const projectDir = await tempPaths.createTempPath("skiui-cli-project-");
   const globalDir = await tempPaths.createTempPath("skiui-cli-global-");
 
-  const result = await runCli(["init", "--global"], {
+  const result = await runCli(["init", "--scope", "global"], {
     cwd: projectDir,
     env: createSkiuiTestEnv({ globalDir })
   });
@@ -37,5 +37,21 @@ test("cli init --global only creates global configuration", async () => {
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("Initialized global configuration");
   expect(await fileExists(join(projectDir, ".skiui", "skiui.json"))).toBe(false);
+  expect(await fileExists(join(globalDir, "skiui.json"))).toBe(true);
+});
+
+test("cli init --scope local creates local project configuration", async () => {
+  const projectDir = await tempPaths.createTempPath("skiui-cli-project-");
+  const globalDir = await tempPaths.createTempPath("skiui-cli-global-");
+
+  const result = await runCli(["init", "--scope", "local"], {
+    cwd: projectDir,
+    env: createSkiuiTestEnv({ globalDir })
+  });
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain("Initialized local and project and global configuration");
+  expect(await fileExists(join(projectDir, ".skiui", "skiui.local.json"))).toBe(true);
+  expect(await fileExists(join(projectDir, ".skiui", "skiui.json"))).toBe(true);
   expect(await fileExists(join(globalDir, "skiui.json"))).toBe(true);
 });

@@ -1,9 +1,12 @@
 import type { Argv } from "yargs";
 import { initConfig } from "../../../lib/config/service";
+import type { ConfigScope } from "../../../lib/projects/types";
 
 type InitArgs = {
-  global?: boolean;
+  scope?: ConfigScope;
 };
+
+const SCOPE_CHOICES = ["local", "project", "global"] as const;
 
 export function registerInitCommand(cli: Argv) {
   return cli.command<InitArgs>(
@@ -11,19 +14,25 @@ export function registerInitCommand(cli: Argv) {
     "Initialise skiui folders and configuration",
     (command) =>
       command
-        .option("global", {
-          type: "boolean",
-          describe: "Initialise global skiui configuration"
+        .option("scope", {
+          type: "string",
+          choices: SCOPE_CHOICES,
+          describe: "Initialise local, project, or global configuration"
         }),
     async (args) => {
-      const globalOnly = args.global ?? false;
+      const scope = args.scope ?? "project";
 
       const result = await initConfig({
-        initGlobal: globalOnly,
-        initProject: !globalOnly
+        initGlobal: scope === "global",
+        initProject: scope === "project" || scope === "local",
+        initLocal: scope === "local"
       });
 
       const initializedScopes: string[] = [];
+
+      if (result.localConfigPath) {
+        initializedScopes.push("local");
+      }
 
       if (result.projectConfigPath) {
         initializedScopes.push("project");

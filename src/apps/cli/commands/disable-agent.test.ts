@@ -13,7 +13,7 @@ test("cli agent disable updates global scope", async () => {
   const globalDir = await tempPaths.createTempPath("skiui-cli-global-");
   const env = createSkiuiTestEnv({ globalDir });
 
-  const initResult = await runCli(["init", "--global"], { cwd: workingDir, env });
+  const initResult = await runCli(["init", "--scope", "global"], { cwd: workingDir, env });
   expect(initResult.exitCode).toBe(0);
 
   const enableResult = await runCli(["agent", "enable", "claude", "--scope", "global"], { cwd: workingDir, env });
