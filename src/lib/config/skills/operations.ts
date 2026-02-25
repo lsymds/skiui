@@ -1,9 +1,10 @@
 import type { ConfigScope } from "../../projects/types";
 import { cloneRepository } from "../../utils/clone";
 import { CliError } from "../../utils/errors";
-import { type LoadedLayers, loadConfigLayers } from "../layers";
+import { loadConfigLayers } from "../layers";
 import { writeConfigFile } from "../store";
 import type { RepositoryConfig, SkiuiConfig } from "../types";
+import { selectTargetLayer } from "../target-layer";
 import {
   allocateRepositoryName,
   inferRepositoryName,
@@ -14,18 +15,12 @@ import {
   validateRepositoryNameInput
 } from "./repository-source";
 
-type TargetLayer = {
-  scope: ConfigScope;
-  configPath: string;
-  config: SkiuiConfig;
-};
-
 const SCOPE_ORDER: Record<ConfigScope, number> = { global: 0, project: 1, local: 2 };
 
 export type AddRepositoryOptions = {
   repository: string;
   repositoryName?: string;
-  global: boolean;
+  scope?: ConfigScope;
   cwd?: string;
   env?: NodeJS.ProcessEnv;
 };
@@ -40,7 +35,7 @@ export type AddRepositoryResult = {
 export type EnableSkillOptions = {
   repositoryName: string;
   skillName: string;
-  global: boolean;
+  scope?: ConfigScope;
   cwd?: string;
   env?: NodeJS.ProcessEnv;
 };
@@ -67,7 +62,7 @@ export type ListEnabledSkillsResult = {
 
 export async function addRepository(options: AddRepositoryOptions): Promise<AddRepositoryResult> {
   const layers = await loadConfigLayers(options.cwd, options.env);
-  const target = selectTargetLayer(layers, options.global);
+  const target = selectTargetLayer(layers, options.scope);
 
   const source = parseRepositorySource(options.repository);
   const requestedRepositoryName = options.repositoryName ? validateRepositoryNameInput(options.repositoryName) : undefined;
@@ -125,7 +120,7 @@ export async function addRepository(options: AddRepositoryOptions): Promise<AddR
 
 export async function enableSkill(options: EnableSkillOptions): Promise<EnableSkillResult> {
   const layers = await loadConfigLayers(options.cwd, options.env);
-  const target = selectTargetLayer(layers, options.global);
+  const target = selectTargetLayer(layers, options.scope);
 
   const repositoryName = normalizeRepositoryNameInput(options.repositoryName);
   const skillName = normalizeSkillName(options.skillName);
@@ -228,36 +223,4 @@ export async function listEnabledSkills(options?: {
   });
 
   return { entries };
-}
-
-function selectTargetLayer(layers: LoadedLayers, writeToGlobal: boolean): TargetLayer {
-  if (writeToGlobal) {
-    if (!layers.global.config) {
-      throw new CliError("No global skiui configuration found. Run `skiui init --global` first.");
-    }
-
-    return {
-      scope: "global",
-      configPath: layers.global.configPath,
-      config: layers.global.config
-    };
-  }
-
-  if (layers.project.config) {
-    return {
-      scope: "project",
-      configPath: layers.project.configPath,
-      config: layers.project.config
-    };
-  }
-
-  if (layers.global.config) {
-    return {
-      scope: "global",
-      configPath: layers.global.configPath,
-      config: layers.global.config
-    };
-  }
-
-  throw new CliError("No skiui configuration found. Run `skiui init` first.");
 }

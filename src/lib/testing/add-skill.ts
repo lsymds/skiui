@@ -7,7 +7,7 @@ export type AddSkillOptions = {
   skillName: string;
   repositoryUrl?: string;
   sourcePath?: string;
-  global: boolean;
+  scope?: ConfigScope;
   cwd?: string;
   env?: NodeJS.ProcessEnv;
 };
@@ -37,7 +37,7 @@ export async function addSkill(options: AddSkillOptions): Promise<AddSkillResult
 
   const repoResult = await addRepository({
     repository,
-    global: options.global,
+    scope: options.scope,
     cwd: options.cwd,
     env: options.env
   });
@@ -45,7 +45,7 @@ export async function addSkill(options: AddSkillOptions): Promise<AddSkillResult
   const skillResult = await enableSkill({
     repositoryName: repoResult.repositoryName,
     skillName: options.skillName,
-    global: options.global,
+    scope: options.scope,
     cwd: options.cwd,
     env: options.env
   });

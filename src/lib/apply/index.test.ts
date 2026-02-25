@@ -25,7 +25,7 @@ test("applyConfigured syncs catalog metadata and links enabled project skills", 
     sourceType: "fs",
     sourcePath: ".skiui/local",
     skillName: "my-skill",
-    global: false,
+    scope: "project",
     cwd: harness.projectDir,
     env: harness.env
   });
@@ -78,7 +78,7 @@ test("applyConfigured extracts description from frontmatter metadata", async () 
     sourceType: "fs",
     sourcePath: ".skiui/local",
     skillName: "frontmatter-skill",
-    global: false,
+    scope: "project",
     cwd: harness.projectDir,
     env: harness.env
   });
@@ -103,7 +103,7 @@ test("applyConfigured clones vercel git repository and extracts frontmatter desc
     sourceType: "git",
     repositoryUrl: VERCEL_AGENT_SKILLS_REPOSITORY,
     skillName: "web-design-guidelines",
-    global: false,
+    scope: "project",
     cwd: harness.projectDir,
     env: harness.env
   });
@@ -141,7 +141,7 @@ test("applyConfigured returns missing enabled skills", async () => {
     sourceType: "fs",
     sourcePath: ".skiui/local",
     skillName: "missing-skill",
-    global: false,
+    scope: "project",
     cwd: harness.projectDir,
     env: harness.env
   });
@@ -169,7 +169,7 @@ test("applyConfigured rejects overlapping fs source and assistant destination pa
     sourceType: "fs",
     sourcePath: ".claude/skills",
     skillName: "my-skill",
-    global: false,
+    scope: "project",
     cwd: harness.projectDir,
     env: harness.env
   });
@@ -198,7 +198,7 @@ test("applyConfigured applies global scope to HOME and project scope to cwd", as
     sourceType: "fs",
     sourcePath: globalFsSource,
     skillName: "global-skill",
-    global: true,
+    scope: "global",
     cwd: harness.projectDir,
     env: harness.env
   });
@@ -207,7 +207,7 @@ test("applyConfigured applies global scope to HOME and project scope to cwd", as
     sourceType: "fs",
     sourcePath: ".skiui/local",
     skillName: "project-skill",
-    global: false,
+    scope: "project",
     cwd: harness.projectDir,
     env: harness.env
   });
@@ -237,7 +237,7 @@ test("applyConfigured project scope inherits enabled assistants from global conf
     sourceType: "fs",
     sourcePath: ".skiui/local",
     skillName: "project-skill",
-    global: false,
+    scope: "project",
     cwd: harness.projectDir,
     env: harness.env
   });

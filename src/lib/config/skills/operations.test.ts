@@ -29,7 +29,7 @@ test("addSkill writes to project config by default when project config exists", 
     sourceType: "git",
     repositoryUrl: VERCEL_AGENT_SKILLS_REPOSITORY,
     skillName: "my-skill",
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -59,7 +59,7 @@ test("addSkill writes to project config by default when project config exists", 
     sourceType: "git",
     repositoryUrl: VERCEL_AGENT_SKILLS_REPOSITORY,
     skillName: "my-skill",
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -84,7 +84,6 @@ test("addSkill falls back to global config outside project context", async () =>
     sourceType: "git",
     repositoryUrl: VERCEL_AGENT_SKILLS_REPOSITORY,
     skillName: "global-skill",
-    global: false,
     cwd: workingDir,
     env
   });
@@ -122,7 +121,7 @@ test("addSkill does not duplicate repository when git URL formatting differs", a
     sourceType: "git",
     repositoryUrl: `${VERCEL_AGENT_SKILLS_REPOSITORY}.git`,
     skillName: "first-skill",
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -131,7 +130,7 @@ test("addSkill does not duplicate repository when git URL formatting differs", a
     sourceType: "git",
     repositoryUrl: `${VERCEL_AGENT_SKILLS_REPOSITORY}/`,
     skillName: "second-skill",
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -171,7 +170,7 @@ test("addSkill does not duplicate repository when fs path formatting differs", a
     sourceType: "fs",
     sourcePath: ".skiui/local/",
     skillName: "first-fs-skill",
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -180,7 +179,7 @@ test("addSkill does not duplicate repository when fs path formatting differs", a
     sourceType: "fs",
     sourcePath: ".skiui\\local",
     skillName: "second-fs-skill",
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -220,14 +219,14 @@ test("addRepository infers git source and avoids duplicate entries", async () =>
 
   const firstResult = await addRepository({
     repository: `${VERCEL_AGENT_SKILLS_REPOSITORY}.git`,
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
 
   const secondResult = await addRepository({
     repository: `${VERCEL_AGENT_SKILLS_REPOSITORY}/`,
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -261,7 +260,7 @@ test("addRepository allows explicit repository name", async () => {
   const result = await addRepository({
     repository: VERCEL_AGENT_SKILLS_REPOSITORY,
     repositoryName: "shared-skills",
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -285,7 +284,7 @@ test("addRepository errors when explicit name conflicts with different source", 
   await addRepository({
     repository: VERCEL_AGENT_SKILLS_REPOSITORY,
     repositoryName: "shared-skills",
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -294,7 +293,7 @@ test("addRepository errors when explicit name conflicts with different source", 
     addRepository({
       repository: ".skiui/another-source",
       repositoryName: "shared-skills",
-      global: false,
+      scope: "project",
       cwd: projectDir,
       env
     })
@@ -316,7 +315,7 @@ test("addRepository errors when source exists under different name", async () =>
   await addRepository({
     repository: VERCEL_AGENT_SKILLS_REPOSITORY,
     repositoryName: "shared-skills",
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -325,7 +324,7 @@ test("addRepository errors when source exists under different name", async () =>
     addRepository({
       repository: `${VERCEL_AGENT_SKILLS_REPOSITORY}.git`,
       repositoryName: "other-name",
-      global: false,
+      scope: "project",
       cwd: projectDir,
       env
     })
@@ -346,7 +345,7 @@ test("enableSkill enables existing disabled skill in repository", async () => {
 
   const addRepositoryResult = await addRepository({
     repository: VERCEL_AGENT_SKILLS_REPOSITORY,
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -379,7 +378,7 @@ test("enableSkill enables existing disabled skill in repository", async () => {
   const enableResult = await enableSkill({
     repositoryName: addRepositoryResult.repositoryName,
     skillName: "my-skill",
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
@@ -414,7 +413,7 @@ test("listEnabledSkills includes scope for enabled entries", async () => {
     sourceType: "git",
     repositoryUrl: VERCEL_AGENT_SKILLS_REPOSITORY,
     skillName: "global-skill",
-    global: true,
+    scope: "global",
     cwd: projectDir,
     env
   });
@@ -423,7 +422,7 @@ test("listEnabledSkills includes scope for enabled entries", async () => {
     sourceType: "git",
     repositoryUrl: VERCEL_AGENT_SKILLS_REPOSITORY,
     skillName: "project-skill",
-    global: false,
+    scope: "project",
     cwd: projectDir,
     env
   });
