@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "cli": "bun run src/apps/cli/index.ts",
+    "lint": "true",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
