@@ -2,6 +2,66 @@
 
 TUI and CLI based multi-agent skill manager.
 
+## Installation
+
+### With Mise
+
+Install the latest released `skiui` binary via Mise:
+
+```sh
+mise use --global "github:lsymds/skiui@latest"
+```
+
+Or add it to your `mise.toml`:
+
+```toml
+[tools]
+"github:lsymds/skiui" = "latest"
+```
+
+Verify:
+
+```sh
+skiui --help
+```
+
+### Manual (prebuilt binaries)
+
+1. Open `https://github.com/lsymds/skiui/releases`.
+2. Download the archive for your platform:
+   - Linux x64: `skiui-vX.Y.Z-linux-x64.tar.gz`
+   - Linux arm64: `skiui-vX.Y.Z-linux-arm64.tar.gz`
+   - macOS x64: `skiui-vX.Y.Z-darwin-x64.tar.gz`
+   - macOS arm64: `skiui-vX.Y.Z-darwin-arm64.tar.gz`
+   - Windows x64: `skiui-vX.Y.Z-windows-x64.zip`
+3. Extract the archive and move `skiui` (or `skiui.exe`) into a directory on your `PATH`.
+
+Verify:
+
+```sh
+skiui --help
+```
+
+### Compilation (manual Bun install)
+
+If you prefer to build from source without Mise:
+
+1. Install Bun: `https://bun.sh/docs/installation`
+2. Build from source:
+
+```sh
+git clone https://github.com/lsymds/skiui.git
+cd skiui
+bun install --frozen-lockfile
+bun build src/apps/cli/index.ts --compile --outfile skiui
+```
+
+Run the compiled binary:
+
+```sh
+./skiui --help
+```
+
 ## CLI
 
 - `skiui init` initializes global and project config for the current repository.
