@@ -14,7 +14,13 @@ export function registerConfigCommand(cli: Argv) {
         throw new CliError("No skiui configuration found. Run `skiui init` first.");
       }
 
-      console.log(JSON.stringify(result.config, null, 2));
+      const configToPrint = { ...result.config };
+
+      if (result.isProjectContext) {
+        delete configToPrint.projects;
+      }
+
+      console.log(JSON.stringify(configToPrint, null, 2));
     }
   );
 }

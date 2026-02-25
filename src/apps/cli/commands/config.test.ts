@@ -42,10 +42,12 @@ test("cli config returns merged project config", async () => {
   const parsed = JSON.parse(configResult.stdout) as {
     cachePath: string;
     assistants: Record<string, string>;
+    projects?: Array<{ path: string }>;
   };
 
   expect(parsed.cachePath).toBe(".skiui/local-cache");
   expect(parsed.assistants.opencode).toBe("enabled");
+  expect(parsed.projects).toBeUndefined();
 });
 
 test("cli config errors when no config is present", async () => {
