@@ -4,6 +4,60 @@
 	"title": "skiui configuration",
 	"type": "object",
 	"additionalProperties": false,
+	"$defs": {
+		"assistantStatus": {
+			"enum": ["enabled", "disabled"]
+		},
+		"repositorySourceGit": {
+			"title": "Git repository source",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["type", "url"],
+			"properties": {
+				"type": {
+					"const": "git"
+				},
+				"url": {
+					"type": "string",
+					"minLength": 1
+				},
+				"path": {
+					"type": "string"
+				},
+				"branch": {
+					"type": "string"
+				}
+			}
+		},
+		"repositorySourceFs": {
+			"title": "Filesystem repository source",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["type", "path"],
+			"properties": {
+				"type": {
+					"const": "fs"
+				},
+				"path": {
+					"type": "string",
+					"minLength": 1
+				}
+			}
+		},
+		"repositorySource": {
+			"oneOf": [
+				{
+					"$ref": "#/$defs/repositorySourceGit"
+				},
+				{
+					"$ref": "#/$defs/repositorySourceFs"
+				}
+			],
+			"discriminator": {
+				"propertyName": "type"
+			}
+		}
+	},
 	"required": ["version", "cachePath", "assistants", "repositories"],
 	"properties": {
 		"$schema": {
@@ -23,8 +77,106 @@
 		},
 		"assistants": {
 			"type": "object",
+			"properties": {
+				"agentsmd": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"copilot": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"claude": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"codex": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"pi": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"jules": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"cursor": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"windsurf": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"cline": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"crush": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"amp": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"antigravity": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"amazonqcli": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"aider": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"firebase": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"openhands": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"gemini-cli": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"junie": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"augmentcode": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"kilocode": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"opencode": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"goose": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"qwen": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"roo": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"zed": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"trae": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"warp": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"kiro": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"firebender": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"factory": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"mistral": {
+					"$ref": "#/$defs/assistantStatus"
+				},
+				"jetbrains-ai-assistant": {
+					"$ref": "#/$defs/assistantStatus"
+				}
+			},
 			"additionalProperties": {
-				"enum": ["enabled", "disabled"]
+				"$ref": "#/$defs/assistantStatus"
 			}
 		},
 		"repositories": {
@@ -45,42 +197,7 @@
 						"type": "string"
 					},
 					"source": {
-						"oneOf": [
-							{
-								"type": "object",
-								"additionalProperties": false,
-								"required": ["type", "url"],
-								"properties": {
-									"type": {
-										"const": "git"
-									},
-									"url": {
-										"type": "string",
-										"minLength": 1
-									},
-									"path": {
-										"type": "string"
-									},
-									"branch": {
-										"type": "string"
-									}
-								}
-							},
-							{
-								"type": "object",
-								"additionalProperties": false,
-								"required": ["type", "path"],
-								"properties": {
-									"type": {
-										"const": "fs"
-									},
-									"path": {
-										"type": "string",
-										"minLength": 1
-									}
-								}
-							}
-						]
+						"$ref": "#/$defs/repositorySource"
 					},
 					"skills": {
 						"type": "array",
