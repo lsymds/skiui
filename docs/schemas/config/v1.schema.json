@@ -190,12 +190,6 @@
 						"type": "string",
 						"minLength": 1
 					},
-					"lastRefreshed": {
-						"type": "string"
-					},
-					"lastFetched": {
-						"type": "string"
-					},
 					"source": {
 						"$ref": "#/$defs/repositorySource"
 					},
@@ -236,12 +230,6 @@
 					"path": {
 						"type": "string",
 						"minLength": 1
-					},
-					"lastRefreshed": {
-						"type": "string"
-					},
-					"lastFetched": {
-						"type": "string"
 					}
 				}
 			}

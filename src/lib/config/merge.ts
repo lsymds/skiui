@@ -60,8 +60,6 @@ function mergeRepositories(
 
 			byName.set(repository.name, {
 				name: repository.name,
-				lastRefreshed: repository.lastRefreshed ?? current.lastRefreshed,
-				lastFetched: repository.lastFetched ?? current.lastFetched,
 				source: repository.source,
 				skills: mergeSkills(current.skills, repository.skills),
 			})

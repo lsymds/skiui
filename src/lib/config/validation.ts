@@ -33,16 +33,12 @@ const repositorySourceSchema = z.discriminatedUnion("type", [
 
 const repositorySchema = z.object({
 	name: z.string().min(1),
-	lastRefreshed: z.string().optional(),
-	lastFetched: z.string().optional(),
 	source: repositorySourceSchema,
 	skills: z.array(skillSchema),
 })
 
 const projectRecordSchema = z.object({
 	path: z.string().min(1),
-	lastRefreshed: z.string().optional(),
-	lastFetched: z.string().optional(),
 })
 
 const skiuiConfigSchema = z.object({

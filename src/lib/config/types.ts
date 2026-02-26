@@ -16,16 +16,12 @@ export type SkillConfig = {
 
 export type RepositoryConfig = {
 	name: string
-	lastRefreshed?: string
-	lastFetched?: string
 	source: RepositorySource
 	skills: SkillConfig[]
 }
 
 export type ProjectRecord = {
 	path: string
-	lastRefreshed?: string
-	lastFetched?: string
 }
 
 export type SkiuiConfig = {
