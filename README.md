@@ -62,7 +62,9 @@ Run the compiled binary:
 ./skiui --help
 ```
 
-## CLI
+## Usage
+
+### CLI Reference
 
 - `skiui init` initializes global and project config for the current repository.
 - `skiui init` also creates `.skiui/AGENTS.md` in project scope as the default rules source file.
@@ -74,6 +76,144 @@ Run the compiled binary:
 - `skiui apply` syncs repositories, links enabled skills, links rules from `rulesPath` (default `.skiui/AGENTS.md`) into enabled assistants' rule files, and reconciles project `.gitignore` entries for skiui/assistant paths while excluding configured `rulesPath` and configured filesystem repository source paths.
 - `skiui list` lists enabled skills by config scope.
 - `skiui config` prints the effective merged config.
+
+### Examples
+
+#### Initialize configuration
+
+Inside a repository, initialize project config (and register the project in global config):
+
+```sh
+skiui init
+```
+
+To create local override config too:
+
+```sh
+skiui init --scope local
+```
+
+#### Add skill repositories
+
+Add a Git repository source:
+
+```sh
+skiui repo add https://github.com/vercel-labs/agent-skills
+```
+
+Add a filesystem source (relative or absolute path), with an explicit repository name:
+
+```sh
+skiui repo add .skiui/external-skills --name external
+```
+
+Notes:
+
+- Repository names are inferred automatically when `--name` is omitted.
+- `repo add` runs an initial sync after adding a new source.
+
+#### Enable skills
+
+Enable a skill from a configured repository:
+
+```sh
+skiui skill enable agent-skills my-skill
+```
+
+Enable into a specific scope when needed:
+
+```sh
+skiui skill enable external my-skill --scope local
+```
+
+### Enable agents
+
+Enable assistants that should receive linked skills/rules:
+
+```sh
+skiui agent enable claude
+skiui agent enable codex
+```
+
+You can disable an assistant the same way:
+
+```sh
+skiui agent disable codex
+```
+
+#### Apply changes and inspect state
+
+Apply sync/linking after configuration updates:
+
+```sh
+skiui apply
+```
+
+Inspect enabled skills by scope:
+
+```sh
+skiui list
+```
+
+Inspect the merged effective config:
+
+```sh
+skiui config
+```
+
+## Configuration hierarchy
+
+skiui reads and merges config in this order:
+
+1. global: `~/.config/skiui/skiui.json` (or `$SKIUI_GLOBAL_CONFIG_DIR/skiui.json`)
+2. project: `<repo>/.skiui/skiui.json`
+3. local: `<repo>/.skiui/skiui.local.json`
+
+Precedence is `local > project > global` for overlapping values.
+
+- Without `--scope`, writes default to `project` when project config exists, otherwise `global`.
+- `local` scope requires project config.
+- `skiui config` shows the final merged result that `skiui apply` uses.
+
+### When each scope is useful
+
+- **Global** (`~/.config/skiui/skiui.json`): machine-wide defaults you want in every repo on your machine (for example, a default assistant enablement policy or shared repository source).
+- **Project** (`.skiui/skiui.json`): team/shared defaults for one repository; use this for repo-level conventions everyone should inherit.
+- **Local** (`.skiui/skiui.local.json`): personal overrides for one repository without changing the project baseline.
+
+Typical pattern:
+
+1. Put organization or machine defaults in **global**.
+2. Put repository standards in **project**.
+3. Put developer-specific tweaks in **local**.
+
+### How overrides behave
+
+- `cachePath` and `rulesPath`: nearest scope wins (`local`, then `project`, then `global`).
+- `assistants`: merged by assistant id; nearest scope wins per assistant.
+- `repositories`: merged by repository name across scopes.
+- `skills` inside a repository: merged by skill path; nearest scope can enable/disable or override metadata for that skill.
+
+This lets you keep a stable team config while still doing temporary personal changes locally.
+
+### Practical examples
+
+Team baseline in project scope:
+
+```sh
+skiui repo add https://github.com/vercel-labs/agent-skills --scope project
+skiui skill enable agent-skills code-review --scope project
+skiui agent enable codex --scope project
+```
+
+Personal local override in the same repo:
+
+```sh
+skiui agent enable claude --scope local
+skiui skill enable agent-skills my-experimental-skill --scope local
+```
+
+The second set only affects your local effective config for that repo; project/global config stays unchanged.
 
 ## CI and Releases
 
