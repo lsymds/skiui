@@ -458,6 +458,42 @@ test("applyConfigured links rules to enabled assistants", async () => {
 	expect(await isSymlink(join(harness.projectDir, ".clinerules"))).toBe(true)
 })
 
+test("applyConfigured resolves default global rulesPath from global config directory", async () => {
+	const harness = await setupProjectHarness()
+
+	await writeFile(
+		join(harness.globalDir, "AGENTS.md"),
+		"# Global Rules\n",
+		"utf8",
+	)
+	await setAssistantState(
+		join(harness.globalDir, "skiui.json"),
+		"claude",
+		"enabled",
+	)
+
+	const result = await applyConfigured({
+		cwd: harness.projectDir,
+		env: harness.env,
+	})
+
+	expect(result.missingSkills).toHaveLength(0)
+	expect(
+		result.scopes.some(
+			(scope) => scope.scope === "global" && scope.rulesLinked > 0,
+		),
+	).toBe(true)
+	expect(await pathExists(join(harness.homeDir, ".claude", "CLAUDE.md"))).toBe(
+		true,
+	)
+	expect(await isSymlink(join(harness.homeDir, ".claude", "CLAUDE.md"))).toBe(
+		true,
+	)
+	expect(
+		await readFile(join(harness.homeDir, ".claude", "CLAUDE.md"), "utf8"),
+	).toBe("# Global Rules\n")
+})
+
 test("applyConfigured uses configured rulesPath for each scope independently", async () => {
 	const harness = await setupProjectHarness()
 
@@ -489,9 +525,9 @@ test("applyConfigured uses configured rulesPath for each scope independently", a
 	})
 
 	expect(result.missingSkills).toHaveLength(0)
-	expect(await readFile(join(harness.homeDir, "CLAUDE.md"), "utf8")).toBe(
-		"# Global Rules\n",
-	)
+	expect(
+		await readFile(join(harness.homeDir, ".claude", "CLAUDE.md"), "utf8"),
+	).toBe("# Global Rules\n")
 	expect(await readFile(join(harness.projectDir, "CLAUDE.md"), "utf8")).toBe(
 		"# Project Rules\n",
 	)

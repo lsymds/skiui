@@ -49,3 +49,11 @@ test("all assistants define explicit global rule paths", () => {
 		),
 	).toBe(true)
 })
+
+test("getAssistantRulePaths returns scope-specific global paths", () => {
+	const paths = getAssistantRulePaths("global")
+
+	expect(paths.includes(".claude/CLAUDE.md")).toBe(true)
+	expect(paths.includes(".opencode/AGENTS.md")).toBe(true)
+	expect(paths.includes("CLAUDE.md")).toBe(false)
+})

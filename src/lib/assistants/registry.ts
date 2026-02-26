@@ -38,23 +38,28 @@ export const ASSISTANT_DEFINITIONS: AssistantDefinition[] = [
 	defineAssistant("copilot", {
 		skillPaths: [".claude/skills"],
 		rulePaths: ["AGENTS.md"],
+		globalRulePaths: [".claude/AGENTS.md"],
 	}),
 	defineAssistant("claude", {
 		skillPaths: [".claude/skills"],
 		rulePaths: ["CLAUDE.md"],
+		globalRulePaths: [".claude/CLAUDE.md"],
 	}),
 	defineAssistant("codex", {
 		skillPaths: [".codex/skills"],
 		rulePaths: ["AGENTS.md"],
+		globalRulePaths: [".codex/AGENTS.md"],
 	}),
 	defineAssistant("pi", {
 		skillPaths: [".pi/skills"],
 		rulePaths: ["AGENTS.md"],
+		globalRulePaths: [".pi/AGENTS.md"],
 	}),
 	defineAssistant("jules", { rulePaths: ["AGENTS.md"] }),
 	defineAssistant("cursor", {
 		skillPaths: [".cursor/skills"],
 		rulePaths: ["AGENTS.md"],
+		globalRulePaths: [".cursor/AGENTS.md"],
 	}),
 	defineAssistant("windsurf", { rulePaths: ["AGENTS.md"] }),
 	defineAssistant("cline", { rulePaths: [".clinerules"] }),
@@ -62,6 +67,7 @@ export const ASSISTANT_DEFINITIONS: AssistantDefinition[] = [
 	defineAssistant("amp", {
 		skillPaths: [".agents/skills"],
 		rulePaths: ["AGENTS.md"],
+		globalRulePaths: [".agents/AGENTS.md"],
 	}),
 	defineAssistant("antigravity", {
 		skillPaths: [".agent/skills"],
@@ -78,6 +84,7 @@ export const ASSISTANT_DEFINITIONS: AssistantDefinition[] = [
 	defineAssistant("gemini-cli", {
 		skillPaths: [".gemini/skills"],
 		rulePaths: ["AGENTS.md"],
+		globalRulePaths: [".gemini/AGENTS.md"],
 	}),
 	defineAssistant("junie", { rulePaths: [".junie/guidelines.md"] }),
 	defineAssistant("augmentcode", {
@@ -86,10 +93,12 @@ export const ASSISTANT_DEFINITIONS: AssistantDefinition[] = [
 	defineAssistant("kilocode", {
 		skillPaths: [".claude/skills"],
 		rulePaths: ["AGENTS.md"],
+		globalRulePaths: [".claude/AGENTS.md"],
 	}),
 	defineAssistant("opencode", {
 		skillPaths: [".opencode/skills"],
 		rulePaths: ["AGENTS.md"],
+		globalRulePaths: [".opencode/AGENTS.md"],
 	}),
 	defineAssistant("goose", {
 		skillPaths: [".agents/skills"],
@@ -99,6 +108,7 @@ export const ASSISTANT_DEFINITIONS: AssistantDefinition[] = [
 	defineAssistant("roo", {
 		skillPaths: [".roo/skills"],
 		rulePaths: ["AGENTS.md"],
+		globalRulePaths: [".roo/AGENTS.md"],
 	}),
 	defineAssistant("zed", { rulePaths: ["AGENTS.md"] }),
 	defineAssistant("trae", { rulePaths: [".trae/rules/project_rules.md"] }),
@@ -110,10 +120,12 @@ export const ASSISTANT_DEFINITIONS: AssistantDefinition[] = [
 	defineAssistant("factory", {
 		skillPaths: [".factory/skills"],
 		rulePaths: ["AGENTS.md"],
+		globalRulePaths: [".factory/AGENTS.md"],
 	}),
 	defineAssistant("mistral", {
 		skillPaths: [".vibe/skills"],
 		rulePaths: ["AGENTS.md"],
+		globalRulePaths: [".vibe/AGENTS.md"],
 	}),
 	defineAssistant("jetbrains-ai-assistant", {
 		rulePaths: [".aiassistant/rules/AGENTS.md"],
