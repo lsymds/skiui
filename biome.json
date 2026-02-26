@@ -1,0 +1,14 @@
+{
+	"$schema": "https://biomejs.dev/schemas/latest/schema.json",
+	"files": {
+		"ignoreUnknown": true
+	},
+	"formatter": {
+		"enabled": true
+	},
+	"javascript": {
+		"formatter": {
+			"semicolons": "asNeeded"
+		}
+	}
+}
