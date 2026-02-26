@@ -174,6 +174,7 @@ Precedence is `local > project > global` for overlapping values.
 - Without `--scope`, writes default to `project` when project config exists, otherwise `global`.
 - `local` scope requires project config.
 - `skiui config` shows the final merged result that `skiui apply` uses.
+- `skiui init` writes `$schema` in each new config file, pointing to `https://raw.githubusercontent.com/lsymds/skiui/main/docs/schemas/config/v1.schema.json`.
 
 ### When each scope is useful
 
