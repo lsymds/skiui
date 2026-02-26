@@ -1,3 +1,3 @@
 export function bootTui() {
-  throw new Error("TUI entrypoint is not implemented yet");
+	throw new Error("TUI entrypoint is not implemented yet")
 }

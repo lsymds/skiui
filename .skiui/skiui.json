@@ -1,16 +1,16 @@
 {
-  "version": 1,
-  "cachePath": ".skiui/repos",
-  "rulesPath": ".skiui/AGENTS.md",
-  "assistants": {},
-  "repositories": [
-    {
-      "name": "local",
-      "source": {
-        "type": "fs",
-        "path": ".skiui/local"
-      },
-      "skills": []
-    }
-  ]
+	"version": 1,
+	"cachePath": ".skiui/repos",
+	"rulesPath": ".skiui/AGENTS.md",
+	"assistants": {},
+	"repositories": [
+		{
+			"name": "local",
+			"source": {
+				"type": "fs",
+				"path": ".skiui/local"
+			},
+			"skills": []
+		}
+	]
 }

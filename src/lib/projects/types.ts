@@ -1,1 +1,1 @@
-export type ConfigScope = "global" | "project" | "local";
+export type ConfigScope = "global" | "project" | "local"
