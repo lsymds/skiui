@@ -5,7 +5,7 @@ import {
 	getAssistantSkillPaths,
 } from "../assistants/registry"
 import { pathExists, upsertLines } from "../utils/fs"
-import { DEFAULT_RULES_PATH, type SkiuiConfig } from "./types"
+import { DEFAULT_PROJECT_RULES_PATH, type SkiuiConfig } from "./types"
 
 export async function reconcileProjectGitIgnoreLines(options: {
 	cwd: string
@@ -53,7 +53,7 @@ function resolveProjectGitIgnorePlan(options: {
 	}
 
 	const effectiveRulesPath =
-		options.config.rulesPath?.trim() || DEFAULT_RULES_PATH
+		options.config.rulesPath?.trim() || DEFAULT_PROJECT_RULES_PATH
 	const normalizedRulesPath = normalizePathForProject(
 		effectiveRulesPath,
 		options.cwd,

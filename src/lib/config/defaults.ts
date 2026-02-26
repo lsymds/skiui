@@ -3,7 +3,8 @@ import { createDefaultAssistantsConfig } from "../assistants/registry"
 import {
 	CONFIG_SCHEMA_URL,
 	CONFIG_VERSION,
-	DEFAULT_RULES_PATH,
+	DEFAULT_GLOBAL_RULES_PATH,
+	DEFAULT_PROJECT_RULES_PATH,
 	type SkiuiConfig,
 } from "./types"
 
@@ -12,7 +13,7 @@ export function createDefaultGlobalConfig(globalDir: string): SkiuiConfig {
 		$schema: CONFIG_SCHEMA_URL,
 		version: CONFIG_VERSION,
 		cachePath: join(globalDir, "repos"),
-		rulesPath: DEFAULT_RULES_PATH,
+		rulesPath: DEFAULT_GLOBAL_RULES_PATH,
 		assistants: createDefaultAssistantsConfig(),
 		repositories: [],
 		projects: [],
@@ -24,7 +25,7 @@ export function createDefaultProjectConfig(): SkiuiConfig {
 		$schema: CONFIG_SCHEMA_URL,
 		version: CONFIG_VERSION,
 		cachePath: ".skiui/repos",
-		rulesPath: DEFAULT_RULES_PATH,
+		rulesPath: DEFAULT_PROJECT_RULES_PATH,
 		assistants: {},
 		repositories: [
 			{

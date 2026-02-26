@@ -73,7 +73,7 @@ Run the compiled binary:
 - `skiui agent enable <assistant-id> [--scope <local|project|global>]` enables an assistant in a specific config scope.
 - `skiui agent disable <assistant-id> [--scope <local|project|global>]` disables an assistant in a specific config scope.
 - `skiui skill enable <repo-name> <skill-name> [--scope <local|project|global>]` enables a skill in a configured repository.
-- `skiui apply` syncs repositories, links enabled skills, links rules from `rulesPath` (default `.skiui/AGENTS.md`) into enabled assistants' rule files, and reconciles project `.gitignore` entries for skiui/assistant paths while excluding configured `rulesPath` and configured filesystem repository source paths.
+- `skiui apply` syncs repositories, links enabled skills, links rules from `rulesPath` into enabled assistants' rule files, and reconciles project `.gitignore` entries for skiui/assistant paths while excluding configured `rulesPath` and configured filesystem repository source paths.
 - `skiui list` lists enabled skills by config scope.
 - `skiui config` prints the effective merged config.
 

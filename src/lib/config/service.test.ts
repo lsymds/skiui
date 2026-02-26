@@ -7,6 +7,7 @@ import { createDefaultProjectConfig } from "./defaults"
 import { resolveConfigPaths } from "./paths"
 import { initConfig, loadEffectiveConfig } from "./service"
 import { writeConfigFile } from "./store"
+import { DEFAULT_GLOBAL_RULES_PATH, DEFAULT_PROJECT_RULES_PATH } from "./types"
 
 const tempPaths = createTempPathManager()
 
@@ -31,15 +32,18 @@ test("initConfig creates project and global files and registers project", async 
 	const globalConfigContents = await readFile(paths.globalConfigFile, "utf8")
 	const globalConfig = JSON.parse(globalConfigContents) as {
 		projects: Array<{ path: string }>
+		rulesPath: string
 	}
 
 	expect(
 		globalConfig.projects.some((project) => project.path === projectDir),
 	).toBe(true)
+	expect(globalConfig.rulesPath).toBe(DEFAULT_GLOBAL_RULES_PATH)
 
 	const projectConfigContents = await readFile(paths.projectConfigFile, "utf8")
 	const projectConfig = JSON.parse(projectConfigContents) as {
 		repositories: Array<{ name: string }>
+		rulesPath: string
 	}
 
 	expect(
@@ -47,6 +51,7 @@ test("initConfig creates project and global files and registers project", async 
 			(repository) => repository.name === "local",
 		),
 	).toBe(true)
+	expect(projectConfig.rulesPath).toBe(DEFAULT_PROJECT_RULES_PATH)
 	expect(await pathExists(join(projectDir, ".gitignore"))).toBe(false)
 
 	const rulesContents = await readFile(

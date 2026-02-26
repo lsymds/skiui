@@ -4,7 +4,11 @@ import {
 	ASSISTANT_DEFINITIONS,
 	getAssistantRulePathsForScope,
 } from "../assistants/registry"
-import { DEFAULT_RULES_PATH, type SkiuiConfig } from "../config/types"
+import {
+	DEFAULT_GLOBAL_RULES_PATH,
+	DEFAULT_PROJECT_RULES_PATH,
+	type SkiuiConfig,
+} from "../config/types"
 import { CliError } from "../utils/errors"
 import { ensureDirectory, makeSymlink, pathExists } from "../utils/fs"
 
@@ -20,7 +24,10 @@ export async function applyRulesForScope(options: {
 		(assistant) => options.config.assistants[assistant.id] === "enabled",
 	)
 
-	const effectiveRulesPath = getEffectiveRulesPath(options.config.rulesPath)
+	const effectiveRulesPath = getEffectiveRulesPath(
+		options.config.rulesPath,
+		options.scope,
+	)
 	const rulesSourcePath = resolveScopedPath(
 		effectiveRulesPath,
 		options.contextRoot,
@@ -28,7 +35,7 @@ export async function applyRulesForScope(options: {
 
 	if (
 		options.scope === "project" &&
-		effectiveRulesPath === DEFAULT_RULES_PATH &&
+		effectiveRulesPath === DEFAULT_PROJECT_RULES_PATH &&
 		!(await pathExists(rulesSourcePath))
 	) {
 		await ensureDirectory(dirname(rulesSourcePath))
@@ -74,11 +81,18 @@ function resolveScopedPath(path: string, contextRoot: string): string {
 	return isAbsolute(path) ? path : resolve(contextRoot, path)
 }
 
-function getEffectiveRulesPath(rulesPath: string | undefined): string {
+function getEffectiveRulesPath(
+	rulesPath: string | undefined,
+	scope: ScopeName,
+): string {
 	const configuredPath = rulesPath?.trim()
-	return configuredPath && configuredPath.length > 0
-		? configuredPath
-		: DEFAULT_RULES_PATH
+	if (configuredPath && configuredPath.length > 0) {
+		return configuredPath
+	}
+
+	return scope === "global"
+		? DEFAULT_GLOBAL_RULES_PATH
+		: DEFAULT_PROJECT_RULES_PATH
 }
 
 function assertLinkPathsDoNotOverlap(options: {
