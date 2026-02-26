@@ -296,6 +296,58 @@ test("applyConfigured uses configured rulesPath for each scope independently", a
   expect(await readFile(join(harness.projectDir, "CLAUDE.md"), "utf8")).toBe("# Project Rules\n");
 });
 
+test("applyConfigured removes configured project rulesPath from .gitignore", async () => {
+  const harness = await setupProjectHarness();
+  const projectConfigPath = join(harness.projectDir, ".skiui", "skiui.json");
+  const projectConfig = await readJson<{ rulesPath?: string }>(projectConfigPath);
+
+  projectConfig.rulesPath = "CLAUDE.md";
+  await writeFile(projectConfigPath, `${JSON.stringify(projectConfig, null, 2)}\n`, "utf8");
+  await writeFile(join(harness.projectDir, ".gitignore"), "./CLAUDE.md\n.clinerules\n", "utf8");
+
+  const result = await applyConfigured({ cwd: harness.projectDir, env: harness.env });
+
+  expect(result.missingSkills).toHaveLength(0);
+
+  const gitignoreLines = await readGitignoreLines(harness.projectDir);
+  expect(gitignoreLines.has("CLAUDE.md")).toBe(false);
+  expect(gitignoreLines.has(".clinerules")).toBe(true);
+});
+
+test("applyConfigured removes configured fs repository paths from .gitignore", async () => {
+  const harness = await setupProjectHarness();
+  const repositorySourcePath = join(harness.projectDir, ".claude", "skills");
+  const projectConfigPath = join(harness.projectDir, ".skiui", "skiui.json");
+  const projectConfig = await readJson<{
+    repositories: Array<{
+      name: string;
+      source: { type: "git"; url: string } | { type: "fs"; path: string };
+      skills: Array<{ path: string; name: string; description?: string; enabled: boolean }>;
+    }>;
+  }>(projectConfigPath);
+
+  await mkdir(repositorySourcePath, { recursive: true });
+
+  projectConfig.repositories.push({
+    name: "claude-skills-source",
+    source: {
+      type: "fs",
+      path: ".claude/skills/"
+    },
+    skills: []
+  });
+  await writeFile(projectConfigPath, `${JSON.stringify(projectConfig, null, 2)}\n`, "utf8");
+  await writeFile(join(harness.projectDir, ".gitignore"), ".claude/skills/\n.opencode/skills\n", "utf8");
+
+  const result = await applyConfigured({ cwd: harness.projectDir, env: harness.env });
+
+  expect(result.missingSkills).toHaveLength(0);
+
+  const gitignoreLines = await readGitignoreLines(harness.projectDir);
+  expect(gitignoreLines.has(".claude/skills")).toBe(false);
+  expect(gitignoreLines.has(".opencode/skills")).toBe(true);
+});
+
 async function setupProjectHarness(): Promise<{
   projectDir: string;
   globalDir: string;

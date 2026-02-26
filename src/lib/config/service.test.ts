@@ -6,6 +6,7 @@ import { resolveConfigPaths } from "./paths";
 import { initConfig, loadEffectiveConfig } from "./service";
 import { writeConfigFile } from "./store";
 import { createSkiuiTestEnv, createTempPathManager } from "../testing/test-env";
+import { pathExists } from "../utils/fs";
 
 const tempPaths = createTempPathManager();
 
@@ -40,20 +41,7 @@ test("initConfig creates project and global files and registers project", async 
   };
 
   expect(projectConfig.repositories.some((repository) => repository.name === "local")).toBe(true);
-
-  const gitignoreLines = await readGitignoreLines(projectDir);
-  expect(gitignoreLines.has(".skiui/repos")).toBe(true);
-  expect(gitignoreLines.has(".skiui/skiui.local.json")).toBe(true);
-  expect(gitignoreLines.has(".claude/skills")).toBe(true);
-  expect(gitignoreLines.has(".codex/skills")).toBe(true);
-  expect(gitignoreLines.has(".opencode/skills")).toBe(true);
-  expect(gitignoreLines.has(".cursor/skills")).toBe(true);
-  expect(gitignoreLines.has(".roo/skills")).toBe(true);
-  expect(gitignoreLines.has("CLAUDE.md")).toBe(true);
-  expect(gitignoreLines.has(".clinerules")).toBe(true);
-  expect(gitignoreLines.has(".aider.conf.yml")).toBe(true);
-  expect(gitignoreLines.has("WARP.md")).toBe(true);
-  expect(gitignoreLines.has(".claude")).toBe(false);
+  expect(await pathExists(join(projectDir, ".gitignore"))).toBe(false);
 
   const rulesContents = await readFile(join(projectDir, ".skiui", "AGENTS.md"), "utf8");
   expect(rulesContents).toBe("");
@@ -70,9 +58,10 @@ test("initConfig creates project and global files and registers project", async 
     projects: Array<{ path: string }>;
   };
   expect(dedupedGlobalConfig.projects.filter((project) => project.path === projectDir)).toHaveLength(1);
+  expect(await pathExists(join(projectDir, ".gitignore"))).toBe(false);
 });
 
-test("initConfig only ignores assistant skill paths and not assistant roots", async () => {
+test("initConfig does not write .gitignore", async () => {
   const projectDir = await tempPaths.createTempPath("skiui-project-");
   const globalDir = await tempPaths.createTempPath("skiui-global-");
   const env = createSkiuiTestEnv({ globalDir });
@@ -84,12 +73,7 @@ test("initConfig only ignores assistant skill paths and not assistant roots", as
     env
   });
 
-  const gitignoreLines = await readGitignoreLines(projectDir);
-  expect(gitignoreLines.has(".claude/skills")).toBe(true);
-  expect(gitignoreLines.has(".opencode/skills")).toBe(true);
-  expect(gitignoreLines.has("CLAUDE.md")).toBe(true);
-  expect(gitignoreLines.has(".clinerules")).toBe(true);
-  expect(gitignoreLines.has(".claude")).toBe(false);
+  expect(await pathExists(join(projectDir, ".gitignore"))).toBe(false);
 });
 
 test("loadEffectiveConfig returns merged config in project context", async () => {
@@ -118,14 +102,3 @@ test("loadEffectiveConfig returns merged config in project context", async () =>
   expect(result.config?.cachePath).toBe(".skiui/local-cache");
   expect(result.config?.assistants.opencode).toBe("enabled");
 });
-
-async function readGitignoreLines(projectDir: string): Promise<Set<string>> {
-  const gitignoreContents = await readFile(join(projectDir, ".gitignore"), "utf8");
-
-  return new Set(
-    gitignoreContents
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-  );
-}
