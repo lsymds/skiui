@@ -1,13 +1,22 @@
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { reconcileProjectGitIgnoreLines } from "../config/gitignore";
 import { loadConfigLayers } from "../config/layers";
 import { mergeConfigLayers } from "../config/merge";
-import { PROJECT_GITIGNORE_LINES } from "../config/paths";
 import { writeConfigFile } from "../config/store";
-import { CONFIG_VERSION, type AssistantStatus, type RepositoryConfig, type SkiuiConfig, type SkillConfig } from "../config/types";
-import { ASSISTANT_DEFINITIONS, getAssistantSkillPathsForScope } from "../assistants/registry";
+import {
+  CONFIG_VERSION,
+  type AssistantStatus,
+  type RepositoryConfig,
+  type SkiuiConfig,
+  type SkillConfig,
+} from "../config/types";
+import {
+  ASSISTANT_DEFINITIONS,
+  getAssistantSkillPathsForScope,
+} from "../assistants/registry";
 import { CliError } from "../utils/errors";
-import { ensureDirectory, makeSymlink, upsertLines } from "../utils/fs";
+import { ensureDirectory, makeSymlink } from "../utils/fs";
 import { discoverSkills } from "./skill-discovery";
 import { syncRepositoryToCache } from "./sync";
 
@@ -64,12 +73,12 @@ export async function applyConfiguredSkills(options?: {
     scope: "global",
     config: layers.global.config,
     configPath: layers.global.configPath,
-    contextRoot: globalDir
+    contextRoot: globalDir,
   });
 
   const globalApply = await applyScopeSkills({
     scope: globalScope,
-    assistantRoot: resolveHomeDir(env)
+    assistantRoot: resolveHomeDir(env),
   });
 
   scopes.push(globalApply.result);
@@ -80,7 +89,7 @@ export async function applyConfiguredSkills(options?: {
       scope: "project",
       config: layers.project.config,
       configPath: layers.project.configPath,
-      contextRoot: cwd
+      contextRoot: cwd,
     });
 
     let localScopeConfig: SkiuiConfig | null = null;
@@ -91,29 +100,35 @@ export async function applyConfiguredSkills(options?: {
         scope: "project",
         config: layers.local.config,
         configPath: layers.local.configPath,
-        contextRoot: cwd
+        contextRoot: cwd,
       });
 
       localScopeConfig = localScope.config;
-      projectCatalogs = mergeCatalogMaps(projectScope.catalogsByRepository, localScope.catalogsByRepository);
+      projectCatalogs = mergeCatalogMaps(
+        projectScope.catalogsByRepository,
+        localScope.catalogsByRepository,
+      );
     }
 
     const projectEffectiveConfig = mergeProjectLocal(
       projectScope.config,
       localScopeConfig,
-      layers.global.config.assistants
+      layers.global.config.assistants,
     );
 
     const projectApply = await applyScopeSkills({
       scope: {
         scope: "project",
         config: projectEffectiveConfig,
-        catalogsByRepository: projectCatalogs
+        catalogsByRepository: projectCatalogs,
       },
-      assistantRoot: cwd
+      assistantRoot: cwd,
     });
 
-    await upsertLines(join(cwd, ".gitignore"), PROJECT_GITIGNORE_LINES);
+    await reconcileProjectGitIgnoreLines({
+      cwd,
+      config: projectEffectiveConfig,
+    });
 
     scopes.push(projectApply.result);
     missingSkills.push(...projectApply.missingSkills);
@@ -121,7 +136,7 @@ export async function applyConfiguredSkills(options?: {
 
   return {
     scopes,
-    missingSkills
+    missingSkills,
   };
 }
 
@@ -145,31 +160,36 @@ async function syncConfigScope(options: {
     const synced = await syncRepositoryToCache({
       repository,
       contextRoot: options.contextRoot,
-      cacheRepositoryPath
+      cacheRepositoryPath,
     });
 
     const discoveredSkills = await discoverSkills(synced.skillRootPath);
-    const discoveredByPath = new Map(discoveredSkills.map((skill) => [skill.path, skill]));
+    const discoveredByPath = new Map(
+      discoveredSkills.map((skill) => [skill.path, skill]),
+    );
 
-    const mergedSkills = mergeRepositorySkills(repository.skills, discoveredByPath);
+    const mergedSkills = mergeRepositorySkills(
+      repository.skills,
+      discoveredByPath,
+    );
 
     const updatedRepository: RepositoryConfig = {
       name: repository.name,
       source: repository.source,
-      skills: mergedSkills
+      skills: mergedSkills,
     };
 
     updatedRepositories.push(updatedRepository);
     catalogsByRepository.set(updatedRepository.name, {
       repository: updatedRepository,
       discoveredSkillPaths: new Set(discoveredByPath.keys()),
-      sourceSkillBasePath: synced.skillRootPath
+      sourceSkillBasePath: synced.skillRootPath,
     });
   }
 
   const updatedConfig: SkiuiConfig = {
     ...options.config,
-    repositories: updatedRepositories
+    repositories: updatedRepositories,
   };
 
   await writeConfigFile(options.configPath, updatedConfig);
@@ -177,7 +197,7 @@ async function syncConfigScope(options: {
   return {
     scope: options.scope,
     config: updatedConfig,
-    catalogsByRepository
+    catalogsByRepository,
   };
 }
 
@@ -186,7 +206,7 @@ async function applyScopeSkills(options: {
   assistantRoot: string;
 }): Promise<{ result: ApplyScopeResult; missingSkills: MissingSkill[] }> {
   const enabledAssistants = ASSISTANT_DEFINITIONS.filter(
-    (assistant) => options.scope.config.assistants[assistant.id] === "enabled"
+    (assistant) => options.scope.config.assistants[assistant.id] === "enabled",
   );
 
   const missingSkills: MissingSkill[] = [];
@@ -209,20 +229,29 @@ async function applyScopeSkills(options: {
         missingSkills.push({
           scope: options.scope.scope,
           repositoryName: repository.name,
-          skillPath: skill.path
+          skillPath: skill.path,
         });
         continue;
       }
 
-      const sourcePath = join(catalog.sourceSkillBasePath, ...skill.path.split("/"));
+      const sourcePath = join(
+        catalog.sourceSkillBasePath,
+        ...skill.path.split("/"),
+      );
       const linkedDestinations = new Set<string>();
 
       for (const assistant of enabledAssistants) {
-        for (const assistantPath of getAssistantSkillPathsForScope(assistant, options.scope.scope)) {
+        for (const assistantPath of getAssistantSkillPathsForScope(
+          assistant,
+          options.scope.scope,
+        )) {
           const destinationBase = isAbsolute(assistantPath)
             ? assistantPath
             : join(options.assistantRoot, assistantPath);
-          const destinationPath = join(destinationBase, ...skill.path.split("/"));
+          const destinationPath = join(
+            destinationBase,
+            ...skill.path.split("/"),
+          );
           const destinationKey = resolve(destinationPath);
 
           if (linkedDestinations.has(destinationKey)) {
@@ -233,7 +262,7 @@ async function applyScopeSkills(options: {
           assertLinkPathsDoNotOverlap({
             sourcePath,
             destinationPath,
-            context: `skill \`${skill.path}\` from repository \`${repository.name}\` to assistant \`${assistant.id}\``
+            context: `skill \`${skill.path}\` from repository \`${repository.name}\` to assistant \`${assistant.id}\``,
           });
           await makeSymlink(sourcePath, destinationPath);
           skillsLinked += 1;
@@ -247,17 +276,22 @@ async function applyScopeSkills(options: {
       scope: options.scope.scope,
       repositoriesSynced: options.scope.config.repositories.length,
       skillsLinked,
-      rulesLinked
+      rulesLinked,
     },
-    missingSkills
+    missingSkills,
   };
 }
 
 function mergeRepositorySkills(
   configuredSkills: SkillConfig[],
-  discoveredSkillsByPath: Map<string, { path: string; name: string; description?: string }>
+  discoveredSkillsByPath: Map<
+    string,
+    { path: string; name: string; description?: string }
+  >,
 ): SkillConfig[] {
-  const configuredByPath = new Map(configuredSkills.map((skill) => [skill.path, { ...skill }]));
+  const configuredByPath = new Map(
+    configuredSkills.map((skill) => [skill.path, { ...skill }]),
+  );
   const merged: SkillConfig[] = [];
 
   for (const discoveredSkill of discoveredSkillsByPath.values()) {
@@ -267,7 +301,7 @@ function mergeRepositorySkills(
       merged.push({
         ...existing,
         name: discoveredSkill.name,
-        description: discoveredSkill.description
+        description: discoveredSkill.description,
       });
       configuredByPath.delete(discoveredSkill.path);
       continue;
@@ -277,7 +311,7 @@ function mergeRepositorySkills(
       path: discoveredSkill.path,
       name: discoveredSkill.name,
       description: discoveredSkill.description,
-      enabled: false
+      enabled: false,
     });
   }
 
@@ -291,7 +325,7 @@ function mergeRepositorySkills(
 function mergeProjectLocal(
   projectConfig: SkiuiConfig,
   localConfig: SkiuiConfig | null,
-  globalAssistants: Record<string, AssistantStatus>
+  globalAssistants: Record<string, AssistantStatus>,
 ): SkiuiConfig {
   return mergeConfigLayers(
     {
@@ -299,16 +333,16 @@ function mergeProjectLocal(
       cachePath: projectConfig.cachePath,
       assistants: globalAssistants,
       repositories: [],
-      projects: []
+      projects: [],
     },
     projectConfig,
-    localConfig
+    localConfig,
   );
 }
 
 function mergeCatalogMaps(
   baseMap: Map<string, RepositoryCatalog>,
-  overrideMap: Map<string, RepositoryCatalog>
+  overrideMap: Map<string, RepositoryCatalog>,
 ): Map<string, RepositoryCatalog> {
   const merged = new Map<string, RepositoryCatalog>(baseMap);
 
@@ -336,12 +370,22 @@ function assertLinkPathsDoNotOverlap(options: {
   const source = resolve(options.sourcePath);
   const destination = resolve(options.destinationPath);
 
-  if (source === destination || isDescendantPath(source, destination) || isDescendantPath(destination, source)) {
-    throw new CliError(`Cannot link ${options.context} because source and destination paths overlap: ${source} <-> ${destination}`);
+  if (
+    source === destination ||
+    isDescendantPath(source, destination) ||
+    isDescendantPath(destination, source)
+  ) {
+    throw new CliError(
+      `Cannot link ${options.context} because source and destination paths overlap: ${source} <-> ${destination}`,
+    );
   }
 }
 
 function isDescendantPath(path: string, candidateAncestor: string): boolean {
   const relativePath = relative(candidateAncestor, path);
-  return relativePath.length > 0 && !relativePath.startsWith("..") && relativePath !== ".";
+  return (
+    relativePath.length > 0 &&
+    !relativePath.startsWith("..") &&
+    relativePath !== "."
+  );
 }

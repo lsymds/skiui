@@ -1,13 +1,17 @@
 import { resolve } from "node:path";
 import { writeFile } from "node:fs/promises";
-import { createDefaultGlobalConfig, createDefaultLocalConfig, createDefaultProjectConfig } from "./defaults";
+import {
+  createDefaultGlobalConfig,
+  createDefaultLocalConfig,
+  createDefaultProjectConfig,
+} from "./defaults";
 import { mergeConfigLayers } from "./merge";
 import { loadConfigLayers } from "./layers";
-import { PROJECT_GITIGNORE_LINES, resolveConfigPaths } from "./paths";
+import { resolveConfigPaths } from "./paths";
 import { loadConfigFile, writeConfigFile } from "./store";
 import type { SkiuiConfig } from "./types";
 import { CliError } from "../utils/errors";
-import { ensureDirectory, pathExists, upsertLines } from "../utils/fs";
+import { ensureDirectory, pathExists } from "../utils/fs";
 
 export type InitConfigOptions = {
   initGlobal: boolean;
@@ -34,7 +38,9 @@ export type EffectiveConfigResult = {
   localProjectConfigPath: string;
 };
 
-export async function initConfig(options: InitConfigOptions): Promise<InitConfigResult> {
+export async function initConfig(
+  options: InitConfigOptions,
+): Promise<InitConfigResult> {
   const cwd = options.cwd ?? process.cwd();
   const env = options.env ?? process.env;
 
@@ -50,7 +56,10 @@ export async function initConfig(options: InitConfigOptions): Promise<InitConfig
 
   let globalConfig: SkiuiConfig | null = null;
   if (options.initGlobal || options.initProject) {
-    const ensureGlobalResult = await ensureGlobalConfig(paths.globalDir, paths.globalConfigFile);
+    const ensureGlobalResult = await ensureGlobalConfig(
+      paths.globalDir,
+      paths.globalConfigFile,
+    );
     globalConfig = ensureGlobalResult.config;
     globalCreated = ensureGlobalResult.created;
   }
@@ -73,18 +82,22 @@ export async function initConfig(options: InitConfigOptions): Promise<InitConfig
     }
 
     if (options.initLocal) {
-      const existingLocalConfig = await loadConfigFile(paths.localProjectConfigFile);
+      const existingLocalConfig = await loadConfigFile(
+        paths.localProjectConfigFile,
+      );
       if (!existingLocalConfig) {
-        await writeConfigFile(paths.localProjectConfigFile, createDefaultLocalConfig(projectConfig));
+        await writeConfigFile(
+          paths.localProjectConfigFile,
+          createDefaultLocalConfig(projectConfig),
+        );
         localCreated = true;
       }
     }
 
-    const gitignorePath = resolve(cwd, ".gitignore");
-    await upsertLines(gitignorePath, PROJECT_GITIGNORE_LINES);
-
     if (!globalConfig) {
-      throw new CliError("Global config should be initialized before project registration");
+      throw new CliError(
+        "Global config should be initialized before project registration",
+      );
     }
 
     const updatedGlobalConfig = registerProject(globalConfig, cwd);
@@ -92,12 +105,19 @@ export async function initConfig(options: InitConfigOptions): Promise<InitConfig
   }
 
   return {
-    globalConfigPath: options.initGlobal || options.initProject ? paths.globalConfigFile : undefined,
-    projectConfigPath: options.initProject ? paths.projectConfigFile : undefined,
-    localConfigPath: options.initLocal ? paths.localProjectConfigFile : undefined,
+    globalConfigPath:
+      options.initGlobal || options.initProject
+        ? paths.globalConfigFile
+        : undefined,
+    projectConfigPath: options.initProject
+      ? paths.projectConfigFile
+      : undefined,
+    localConfigPath: options.initLocal
+      ? paths.localProjectConfigFile
+      : undefined,
     globalCreated,
     projectCreated,
-    localCreated
+    localCreated,
   };
 }
 
@@ -113,13 +133,17 @@ export async function loadEffectiveConfig(options?: {
       isProjectContext: false,
       globalConfigPath: layers.global.configPath,
       projectConfigPath: layers.project.configPath,
-      localProjectConfigPath: layers.local.configPath
+      localProjectConfigPath: layers.local.configPath,
     };
   }
 
   const isProjectContext = layers.project.config !== null;
   const config = isProjectContext
-    ? mergeConfigLayers(layers.global.config, layers.project.config, layers.local.config)
+    ? mergeConfigLayers(
+        layers.global.config,
+        layers.project.config,
+        layers.local.config,
+      )
     : layers.global.config;
 
   return {
@@ -127,11 +151,14 @@ export async function loadEffectiveConfig(options?: {
     isProjectContext,
     globalConfigPath: layers.global.configPath,
     projectConfigPath: layers.project.configPath,
-    localProjectConfigPath: layers.local.configPath
+    localProjectConfigPath: layers.local.configPath,
   };
 }
 
-async function ensureGlobalConfig(globalDir: string, globalConfigFile: string): Promise<{
+async function ensureGlobalConfig(
+  globalDir: string,
+  globalConfigFile: string,
+): Promise<{
   config: SkiuiConfig;
   created: boolean;
 }> {
@@ -141,7 +168,7 @@ async function ensureGlobalConfig(globalDir: string, globalConfigFile: string): 
   if (existing) {
     return {
       config: existing,
-      created: false
+      created: false,
     };
   }
 
@@ -150,7 +177,7 @@ async function ensureGlobalConfig(globalDir: string, globalConfigFile: string): 
 
   return {
     config,
-    created: true
+    created: true,
   };
 }
 
@@ -167,8 +194,8 @@ function registerProject(globalConfig: SkiuiConfig, cwd: string): SkiuiConfig {
     projects: [
       ...projects,
       {
-        path: projectPath
-      }
-    ]
+        path: projectPath,
+      },
+    ],
   };
 }
