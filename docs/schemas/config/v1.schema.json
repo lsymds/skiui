@@ -1,0 +1,133 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://raw.githubusercontent.com/lsymds/skiui/main/docs/schemas/config/v1.schema.json",
+	"title": "skiui configuration",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["version", "cachePath", "assistants", "repositories"],
+	"properties": {
+		"$schema": {
+			"type": "string",
+			"format": "uri"
+		},
+		"version": {
+			"const": 1
+		},
+		"cachePath": {
+			"type": "string",
+			"minLength": 1
+		},
+		"rulesPath": {
+			"type": "string",
+			"minLength": 1
+		},
+		"assistants": {
+			"type": "object",
+			"additionalProperties": {
+				"enum": ["enabled", "disabled"]
+			}
+		},
+		"repositories": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["name", "source", "skills"],
+				"properties": {
+					"name": {
+						"type": "string",
+						"minLength": 1
+					},
+					"lastRefreshed": {
+						"type": "string"
+					},
+					"lastFetched": {
+						"type": "string"
+					},
+					"source": {
+						"oneOf": [
+							{
+								"type": "object",
+								"additionalProperties": false,
+								"required": ["type", "url"],
+								"properties": {
+									"type": {
+										"const": "git"
+									},
+									"url": {
+										"type": "string",
+										"minLength": 1
+									},
+									"path": {
+										"type": "string"
+									},
+									"branch": {
+										"type": "string"
+									}
+								}
+							},
+							{
+								"type": "object",
+								"additionalProperties": false,
+								"required": ["type", "path"],
+								"properties": {
+									"type": {
+										"const": "fs"
+									},
+									"path": {
+										"type": "string",
+										"minLength": 1
+									}
+								}
+							}
+						]
+					},
+					"skills": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": ["path", "name", "enabled"],
+							"properties": {
+								"path": {
+									"type": "string",
+									"minLength": 1
+								},
+								"name": {
+									"type": "string",
+									"minLength": 1
+								},
+								"description": {
+									"type": "string"
+								},
+								"enabled": {
+									"type": "boolean"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"projects": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["path"],
+				"properties": {
+					"path": {
+						"type": "string",
+						"minLength": 1
+					},
+					"lastRefreshed": {
+						"type": "string"
+					},
+					"lastFetched": {
+						"type": "string"
+					}
+				}
+			}
+		}
+	}
+}
