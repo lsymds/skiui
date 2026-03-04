@@ -1,3 +1,4 @@
+import { runDefaultDoctor } from "../../doctor/default"
 import type { ConfigScope } from "../../projects/types"
 import { cloneRepository } from "../../utils/clone"
 import { CliError } from "../../utils/errors"
@@ -50,6 +51,21 @@ export type EnableSkillResult = {
 	repositoryName: string
 	skillAdded: boolean
 	skillEnabled: boolean
+}
+
+export type DisableSkillOptions = {
+	repositoryName: string
+	skillName: string
+	scope?: ConfigScope
+	cwd?: string
+	env?: NodeJS.ProcessEnv
+}
+
+export type DisableSkillResult = {
+	scope: ConfigScope
+	configPath: string
+	repositoryName: string
+	skillDisabled: boolean
 }
 
 export type EnabledSkillListEntry = {
@@ -189,6 +205,67 @@ export async function enableSkill(
 		repositoryName: repository.name,
 		skillAdded,
 		skillEnabled,
+	}
+}
+
+export async function disableSkill(
+	options: DisableSkillOptions,
+): Promise<DisableSkillResult> {
+	const cwd = options.cwd ?? process.cwd()
+	const env = options.env ?? process.env
+	const layers = await loadConfigLayers(options.cwd, options.env)
+	const target = selectTargetLayer(layers, options.scope)
+
+	const repositoryName = normalizeRepositoryNameInput(options.repositoryName)
+	const skillName = normalizeSkillName(options.skillName)
+
+	const repositories = target.config.repositories.map(cloneRepository)
+	const repository = repositories.find(
+		(candidate) => candidate.name === repositoryName,
+	)
+
+	if (!repository) {
+		throw new CliError(
+			`Repository \`${repositoryName}\` was not found in ${target.scope} config`,
+		)
+	}
+
+	const existingSkill = repository.skills.find(
+		(skill) => skill.path === skillName || skill.name === skillName,
+	)
+
+	if (!existingSkill) {
+		throw new CliError(
+			`Skill \`${skillName}\` was not found in repository \`${repository.name}\` in ${target.scope} config`,
+		)
+	}
+
+	const skillDisabled = existingSkill.enabled
+
+	if (skillDisabled) {
+		existingSkill.enabled = false
+
+		const updatedConfig: SkiuiConfig = {
+			...target.config,
+			repositories,
+		}
+
+		await writeConfigFile(target.configPath, updatedConfig)
+
+		await runDefaultDoctor({
+			scope: target.scope,
+			updatedConfig,
+			layers,
+			cwd,
+			env,
+		})
+	}
+
+	return {
+		scope: target.scope,
+		configPath: target.configPath,
+		repositoryName: repository.name,
+		skillDisabled,
 	}
 }
 

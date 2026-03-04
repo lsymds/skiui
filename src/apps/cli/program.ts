@@ -4,9 +4,9 @@ import { registerAddRepoCommand } from "./commands/add-repo"
 import { registerAgentCommand } from "./commands/agent"
 import { registerApplyCommand } from "./commands/apply"
 import { registerConfigCommand } from "./commands/config"
-import { registerEnableSkillCommand } from "./commands/enable-skill"
 import { registerInitCommand } from "./commands/init"
 import { registerListCommand } from "./commands/list"
+import { registerSkillCommand } from "./commands/skill"
 
 export function buildCli() {
 	const cli = yargs(hideBin(process.argv))
@@ -22,7 +22,7 @@ export function buildCli() {
 	registerInitCommand(cli)
 	registerAgentCommand(cli)
 	registerAddRepoCommand(cli)
-	registerEnableSkillCommand(cli)
+	registerSkillCommand(cli)
 	registerApplyCommand(cli)
 	registerListCommand(cli)
 	registerConfigCommand(cli)

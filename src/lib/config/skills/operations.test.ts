@@ -7,7 +7,12 @@ import {
 	createTempPathManager,
 } from "../../testing/test-env"
 import { initConfig } from "../service"
-import { addRepository, enableSkill, listEnabledSkills } from "./index"
+import {
+	addRepository,
+	disableSkill,
+	enableSkill,
+	listEnabledSkills,
+} from "./index"
 
 const VERCEL_AGENT_SKILLS_REPOSITORY =
 	"https://github.com/vercel-labs/agent-skills"
@@ -445,6 +450,123 @@ test("enableSkill enables existing disabled skill in repository", async () => {
 	)
 
 	expect(skill?.enabled).toBe(true)
+})
+
+test("disableSkill disables existing enabled skill in repository", async () => {
+	const projectDir = await tempPaths.createTempPath("skiui-project-")
+	const globalDir = await tempPaths.createTempPath("skiui-global-")
+	const env = createSkiuiTestEnv({ globalDir })
+
+	await initConfig({
+		initGlobal: false,
+		initProject: true,
+		cwd: projectDir,
+		env,
+	})
+
+	const addRepositoryResult = await addRepository({
+		repository: VERCEL_AGENT_SKILLS_REPOSITORY,
+		scope: "project",
+		cwd: projectDir,
+		env,
+	})
+
+	const configPath = join(projectDir, ".skiui", "skiui.json")
+	const projectConfig = JSON.parse(await readFile(configPath, "utf8")) as {
+		version: number
+		cachePath: string
+		assistants: Record<string, "enabled" | "disabled">
+		repositories: Array<{
+			name: string
+			source: { type: "git"; url: string } | { type: "fs"; path: string }
+			skills: Array<{ path: string; name: string; enabled: boolean }>
+		}>
+	}
+
+	const repository = projectConfig.repositories.find(
+		(entry) => entry.name === addRepositoryResult.repositoryName,
+	)
+	if (!repository) {
+		throw new Error("Expected repository to exist")
+	}
+
+	repository.skills.push({
+		path: "my-skill",
+		name: "my-skill",
+		enabled: true,
+	})
+
+	await writeFile(
+		configPath,
+		`${JSON.stringify(projectConfig, null, 2)}\n`,
+		"utf8",
+	)
+
+	const disableResult = await disableSkill({
+		repositoryName: addRepositoryResult.repositoryName,
+		skillName: "my-skill",
+		scope: "project",
+		cwd: projectDir,
+		env,
+	})
+
+	expect(disableResult.skillDisabled).toBe(true)
+
+	const updatedProjectConfig = JSON.parse(
+		await readFile(configPath, "utf8"),
+	) as {
+		repositories: Array<{
+			name: string
+			skills: Array<{ path: string; enabled: boolean }>
+		}>
+	}
+	const updatedRepository = updatedProjectConfig.repositories.find(
+		(entry) => entry.name === addRepositoryResult.repositoryName,
+	)
+	const skill = updatedRepository?.skills.find(
+		(entry) => entry.path === "my-skill",
+	)
+
+	expect(skill?.enabled).toBe(false)
+})
+
+test("disableSkill reports already disabled when skill is already disabled", async () => {
+	const projectDir = await tempPaths.createTempPath("skiui-project-")
+	const globalDir = await tempPaths.createTempPath("skiui-global-")
+	const env = createSkiuiTestEnv({ globalDir })
+
+	await initConfig({
+		initGlobal: false,
+		initProject: true,
+		cwd: projectDir,
+		env,
+	})
+
+	await enableSkill({
+		repositoryName: "local",
+		skillName: "my-skill",
+		scope: "project",
+		cwd: projectDir,
+		env,
+	})
+
+	const firstDisableResult = await disableSkill({
+		repositoryName: "local",
+		skillName: "my-skill",
+		scope: "project",
+		cwd: projectDir,
+		env,
+	})
+	expect(firstDisableResult.skillDisabled).toBe(true)
+
+	const secondDisableResult = await disableSkill({
+		repositoryName: "local",
+		skillName: "my-skill",
+		scope: "project",
+		cwd: projectDir,
+		env,
+	})
+	expect(secondDisableResult.skillDisabled).toBe(false)
 })
 
 test("listEnabledSkills includes scope for enabled entries", async () => {
