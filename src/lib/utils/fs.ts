@@ -100,3 +100,22 @@ export async function isSymlink(path: string): Promise<boolean> {
 		return false
 	}
 }
+
+export async function removePathIfSymlink(path: string): Promise<boolean> {
+	try {
+		const stat = await lstat(path)
+
+		if (!stat.isSymbolicLink()) {
+			return false
+		}
+
+		await rm(path, { recursive: true, force: true })
+		return true
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+			return false
+		}
+
+		throw error
+	}
+}

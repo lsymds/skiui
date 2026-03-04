@@ -256,6 +256,133 @@ test("applyConfigured returns missing enabled skills", async () => {
 	})
 })
 
+test("applyConfigured prunes stale skill links after skill is disabled in config", async () => {
+	const harness = await setupProjectHarness()
+
+	const localSkillDirectory = join(
+		harness.projectDir,
+		".skiui",
+		"local",
+		"my-skill",
+	)
+	await mkdir(localSkillDirectory, { recursive: true })
+	await Bun.write(
+		join(localSkillDirectory, "SKILL.md"),
+		"# My Skill\n\nSkill description from metadata.\n",
+	)
+
+	await addSkill({
+		sourceType: "fs",
+		sourcePath: ".skiui/local",
+		skillName: "my-skill",
+		scope: "project",
+		cwd: harness.projectDir,
+		env: harness.env,
+	})
+
+	await setAssistantState(
+		join(harness.projectDir, ".skiui", "skiui.json"),
+		"claude",
+		"enabled",
+	)
+
+	await applyConfigured({
+		cwd: harness.projectDir,
+		env: harness.env,
+	})
+
+	const linkedSkillPath = join(
+		harness.projectDir,
+		".claude",
+		"skills",
+		"my-skill",
+	)
+	expect(await pathExists(linkedSkillPath)).toBe(true)
+
+	await setSkillState(
+		join(harness.projectDir, ".skiui", "skiui.json"),
+		"local",
+		"my-skill",
+		false,
+	)
+
+	await applyConfigured({
+		cwd: harness.projectDir,
+		env: harness.env,
+	})
+
+	expect(await pathExists(linkedSkillPath)).toBe(false)
+	expect(await pathExists(join(harness.projectDir, ".claude", "skills"))).toBe(
+		false,
+	)
+	expect(await pathExists(join(harness.projectDir, ".claude"))).toBe(false)
+	expect(await pathExists(join(harness.projectDir, "CLAUDE.md"))).toBe(true)
+})
+
+test("applyConfigured prunes stale assistant skill and rule links after assistant is disabled in config", async () => {
+	const harness = await setupProjectHarness()
+
+	const localSkillDirectory = join(
+		harness.projectDir,
+		".skiui",
+		"local",
+		"my-skill",
+	)
+	await mkdir(localSkillDirectory, { recursive: true })
+	await Bun.write(
+		join(localSkillDirectory, "SKILL.md"),
+		"# My Skill\n\nSkill description from metadata.\n",
+	)
+
+	await addSkill({
+		sourceType: "fs",
+		sourcePath: ".skiui/local",
+		skillName: "my-skill",
+		scope: "project",
+		cwd: harness.projectDir,
+		env: harness.env,
+	})
+
+	await setAssistantState(
+		join(harness.projectDir, ".skiui", "skiui.json"),
+		"claude",
+		"enabled",
+	)
+
+	await applyConfigured({
+		cwd: harness.projectDir,
+		env: harness.env,
+	})
+
+	const linkedSkillPath = join(
+		harness.projectDir,
+		".claude",
+		"skills",
+		"my-skill",
+	)
+	const linkedRulePath = join(harness.projectDir, "CLAUDE.md")
+	expect(await pathExists(linkedSkillPath)).toBe(true)
+	expect(await pathExists(linkedRulePath)).toBe(true)
+
+	await setAssistantState(
+		join(harness.projectDir, ".skiui", "skiui.json"),
+		"claude",
+		"disabled",
+	)
+
+	await applyConfigured({
+		cwd: harness.projectDir,
+		env: harness.env,
+	})
+
+	expect(await pathExists(linkedSkillPath)).toBe(false)
+	expect(await pathExists(linkedRulePath)).toBe(false)
+	expect(await pathExists(join(harness.projectDir, ".claude", "skills"))).toBe(
+		false,
+	)
+	expect(await pathExists(join(harness.projectDir, ".claude"))).toBe(false)
+})
+
 test("applyConfigured rejects overlapping fs source and assistant destination paths", async () => {
 	const harness = await setupProjectHarness()
 	const overlappingSkillDirectory = join(
@@ -649,6 +776,37 @@ async function setAssistantState(
 		configPath,
 	)
 	config.assistants[assistantId] = status
+	await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8")
+}
+
+async function setSkillState(
+	configPath: string,
+	repositoryName: string,
+	skillPath: string,
+	enabled: boolean,
+): Promise<void> {
+	const config = await readJson<{
+		repositories: Array<{
+			name: string
+			skills: Array<{ path: string; enabled: boolean }>
+		}>
+	}>(configPath)
+
+	const repository = config.repositories.find(
+		(candidate) => candidate.name === repositoryName,
+	)
+	if (!repository) {
+		throw new Error(`Repository not found: ${repositoryName}`)
+	}
+
+	const skill = repository.skills.find(
+		(candidate) => candidate.path === skillPath,
+	)
+	if (!skill) {
+		throw new Error(`Skill not found: ${repositoryName}/${skillPath}`)
+	}
+
+	skill.enabled = enabled
 	await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8")
 }
 

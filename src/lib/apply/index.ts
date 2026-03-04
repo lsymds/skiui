@@ -7,6 +7,7 @@ import {
 	CONFIG_VERSION,
 	type SkiuiConfig,
 } from "../config/types"
+import { runDefaultDoctor } from "../doctor/default"
 import { type ApplyResult, applyConfiguredSkills } from "../repos/apply"
 import { applyRulesForScope } from "../rules/apply"
 import { CliError } from "../utils/errors"
@@ -38,6 +39,14 @@ export async function applyConfigured(options?: {
 		}),
 	)
 
+	await runDefaultDoctor({
+		scope: "global",
+		updatedConfig: layers.global.config,
+		layers,
+		cwd,
+		env,
+	})
+
 	if (layers.project.config) {
 		const projectConfig = mergeProjectLocalForRules(
 			layers.project.config,
@@ -54,6 +63,14 @@ export async function applyConfigured(options?: {
 				contextRoot: cwd,
 			}),
 		)
+
+		await runDefaultDoctor({
+			scope: "project",
+			updatedConfig: layers.project.config,
+			layers,
+			cwd,
+			env,
+		})
 	}
 
 	return {

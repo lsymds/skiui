@@ -1,4 +1,5 @@
 import { ASSISTANT_DEFINITIONS } from "../../assistants/registry"
+import { runDefaultDoctor } from "../../doctor/default"
 import type { ConfigScope } from "../../projects/types"
 import { CliError } from "../../utils/errors"
 import { loadConfigLayers } from "../layers"
@@ -47,6 +48,8 @@ export async function disableAssistant(
 export async function setAssistantStatus(
 	options: SetAssistantStatusOptions,
 ): Promise<SetAssistantStatusResult> {
+	const cwd = options.cwd ?? process.cwd()
+	const env = options.env ?? process.env
 	const layers = await loadConfigLayers(options.cwd, options.env)
 	const target = selectTargetLayer(layers, options.scope)
 	const assistantId = normalizeAssistantId(options.assistantId)
@@ -68,6 +71,16 @@ export async function setAssistantStatus(
 		}
 
 		await writeConfigFile(target.configPath, updatedConfig)
+
+		if (options.status === "disabled") {
+			await runDefaultDoctor({
+				scope: target.scope,
+				updatedConfig,
+				layers,
+				cwd,
+				env,
+			})
+		}
 	}
 
 	return {
