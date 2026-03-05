@@ -161,3 +161,63 @@ test("cli skill disable removes stale project symlink destinations", async () =>
 	expect(await fileExists(claudeDir)).toBe(false)
 	expect(await fileExists(linkedRulesPath)).toBe(true)
 })
+
+test("cli skill disable removes stale global symlink destinations", async () => {
+	const workingDir = await tempPaths.createTempPath("skiui-cli-work-")
+	const globalDir = await tempPaths.createTempPath("skiui-cli-global-")
+	const homeDir = await tempPaths.createTempPath("skiui-cli-home-")
+	const sourceDir = await tempPaths.createTempPath("skiui-cli-source-")
+	const env = createSkiuiTestEnv({ globalDir, homeDir })
+
+	await mkdir(join(sourceDir, "my-skill"), { recursive: true })
+	await writeFile(
+		join(sourceDir, "my-skill", "SKILL.md"),
+		"# My Skill\n",
+		"utf8",
+	)
+
+	const initResult = await runCli(["init", "--scope", "global"], {
+		cwd: workingDir,
+		env,
+	})
+	expect(initResult.exitCode).toBe(0)
+
+	const addRepoResult = await runCli(
+		["repo", "add", sourceDir, "--name", "global-local", "--scope", "global"],
+		{ cwd: workingDir, env },
+	)
+	expect(addRepoResult.exitCode).toBe(0)
+
+	const enableSkillResult = await runCli(
+		["skill", "enable", "global-local", "my-skill", "--scope", "global"],
+		{
+			cwd: workingDir,
+			env,
+		},
+	)
+	expect(enableSkillResult.exitCode).toBe(0)
+
+	const enableAgentResult = await runCli(
+		["agent", "enable", "claude", "--scope", "global"],
+		{ cwd: workingDir, env },
+	)
+	expect(enableAgentResult.exitCode).toBe(0)
+
+	const applyResult = await runCli(["apply"], { cwd: workingDir, env })
+	expect(applyResult.exitCode).toBe(0)
+
+	const linkedSkillPath = join(homeDir, ".claude", "skills", "my-skill")
+	const claudeSkillsDir = join(homeDir, ".claude", "skills")
+	const claudeDir = join(homeDir, ".claude")
+	expect(await fileExists(linkedSkillPath)).toBe(true)
+
+	const disableSkillResult = await runCli(
+		["skill", "disable", "global-local", "my-skill", "--scope", "global"],
+		{ cwd: workingDir, env },
+	)
+	expect(disableSkillResult.exitCode).toBe(0)
+
+	expect(await fileExists(linkedSkillPath)).toBe(false)
+	expect(await fileExists(claudeSkillsDir)).toBe(false)
+	expect(await fileExists(claudeDir)).toBe(false)
+})
