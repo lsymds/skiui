@@ -73,7 +73,8 @@ Run the compiled binary:
 - `skiui agent enable <assistant-id> [--scope <local|project|global>]` enables an assistant in a specific config scope.
 - `skiui agent disable <assistant-id> [--scope <local|project|global>]` disables an assistant in a specific config scope.
 - `skiui skill enable <repo-name> <skill-name> [--scope <local|project|global>]` enables a skill in a configured repository.
-- `skiui apply` syncs repositories, links enabled skills, links rules from `rulesPath` into enabled assistants' rule files, and reconciles project `.gitignore` entries for skiui/assistant paths while excluding configured `rulesPath` and configured filesystem repository source paths.
+- `skiui skill disable <repo-name> <skill-name> [--scope <local|project|global>]` disables a skill in a configured repository.
+- `skiui apply` syncs repositories, links enabled skills, links rules from `rulesPath` into enabled assistants' rule files, prunes stale managed skill/rule symlinks, and reconciles project `.gitignore` entries for skiui/assistant paths while excluding configured `rulesPath` and configured filesystem repository source paths.
 - `skiui list` lists enabled skills by config scope.
 - `skiui config` prints the effective merged config.
 
@@ -112,7 +113,7 @@ Notes:
 - Repository names are inferred automatically when `--name` is omitted.
 - `repo add` runs an initial sync after adding a new source.
 
-#### Enable skills
+#### Manage skills
 
 Enable a skill from a configured repository:
 
@@ -124,6 +125,12 @@ Enable into a specific scope when needed:
 
 ```sh
 skiui skill enable external my-skill --scope local
+```
+
+Disable a skill when you no longer want it linked:
+
+```sh
+skiui skill disable external my-skill --scope local
 ```
 
 ### Enable agents
@@ -148,6 +155,8 @@ Apply sync/linking after configuration updates:
 ```sh
 skiui apply
 ```
+
+`apply` also runs doctor cleanup for stale managed symlinks, and removes empty assistant-managed directories such as `.claude/skills` and `.claude` when they are no longer needed.
 
 Inspect enabled skills by scope:
 
